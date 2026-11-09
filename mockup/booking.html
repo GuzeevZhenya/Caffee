@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 26 26'%3E%3Ccircle cx='13' cy='13' r='12' fill='none' stroke='%23d99a4e' stroke-width='2'/%3E%3Ccircle cx='13' cy='10' r='2' fill='%23d99a4e'/%3E%3Ccircle cx='13' cy='17' r='2' fill='%23d99a4e'/%3E%3C/svg%3E">
+<title>Бронирование столов — Tactile Craft Coffee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./src/css/style.css">
+<style>
+  .booking-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+    gap: var(--sp-6);
+    padding: var(--sp-6) 0 var(--sp-8);
+    align-items: start;
+  }
+  .map-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r-l);
+    background: var(--bg-2);
+    padding: var(--sp-5);
+    overflow: hidden;
+  }
+  #hall { width: 100%; height: auto; display: block; }
+  #hall .table-top { cursor: pointer; transition: filter 0.15s ease; }
+  #hall .table-node:hover .table-top { filter: brightness(1.25); }
+  #hall .table-node[data-selected="true"] .table-top { stroke: var(--accent); stroke-width: 2.5; }
+  #hall text { font-family: var(--font-body); pointer-events: none; }
+
+  .legend { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-top: var(--sp-4); font-size: 13px; color: var(--text-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+  .side { display: grid; gap: var(--sp-5); }
+  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
+  .slot {
+    padding: 10px 6px;
+    border-radius: var(--r-s);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text-2);
+    font: 700 13px/1 var(--font-body);
+    transition: all 0.15s ease;
+    min-height: 44px;
+  }
+  .slot:hover { border-color: var(--accent); color: var(--text); }
+  .slot[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--p-espresso-900); }
+
+  .table-info { display: grid; gap: var(--sp-3); }
+  .table-info h2 { font-size: 22px; }
+  .info-row { display: flex; justify-content: space-between; font-size: 14px; border-bottom: 1px dashed var(--line); padding-bottom: 8px; }
+  .info-row span:last-child { font-weight: 700; }
+  .status-pill { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; }
+  .status-pill.free { background: oklch(0.78 0.09 160 / 0.15); color: var(--ok); }
+  .status-pill.held { background: oklch(0.74 0.115 62 / 0.18); color: var(--hold); }
+  .status-pill.occupied { background: oklch(0.68 0.13 25 / 0.18); color: var(--busy); }
+
+  .hold-banner {
+    display: none;
+    border: 1px solid var(--hold);
+    border-radius: var(--r-m);
+    padding: var(--sp-4);
+    background: oklch(0.74 0.115 62 / 0.1);
+    gap: var(--sp-2);
+  }
+  .hold-banner.show { display: grid; }
+  .hold-timer { font-family: var(--font-display); font-size: 26px; color: var(--hold); }
+
+  @media (max-width: 960px) {
+    .booking-layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<main class="wrap">
+  <div class="page-head" style="padding: var(--sp-8) 0 0">
+    <p class="eyebrow">Зал</p>
+    <h1 class="section-title">Карта столов</h1>
+    <p class="section-sub">Выберите слот, затем стол. Холд держится 10 минут — как Redis-лок в боевом приложении.</p>
+  </div>
+
+  <div class="booking-layout">
+    <div class="map-card">
+      <svg id="hall" viewBox="0 0 760 560" role="img" aria-label="Изометрическая карта зала кофейни"></svg>
+      <div class="legend">
+        <span><i style="background: var(--ok)"></i>Свободен</span>
+        <span><i style="background: var(--hold)"></i>Холд</span>
+        <span><i style="background: var(--busy)"></i>Занят</span>
+        <span class="muted">Нажмите на стол, чтобы выбрать</span>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <p class="eyebrow" style="margin-bottom: var(--sp-4)">Слот · сегодня</p>
+        <div class="slots" id="slots" role="group" aria-label="Время бронирования"></div>
+      </div>
+
+      <div class="card table-info" id="table-info">
+        <h2>Выберите стол</h2>
+        <p class="muted">Свободные столы подсвечены зелёным.</p>
+      </div>
+
+      <div class="hold-banner" id="hold-banner">
+        <span class="muted">Стол удерживается за вами</span>
+        <span class="hold-timer" id="hold-timer">10:00</span>
+        <a class="btn btn-primary" href="./checkout.html">Оформить заказ к столику</a>
+        <button type="button" class="btn btn-ghost" id="release">Снять холд</button>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+  import { mountHeader, mountFooter, initReveal } from "./src/js/ui.js";
+  import { getHolds, holdTable, releaseHold, getMyHold } from "./src/js/store.js";
+
+  mountHeader("Столы");
+  mountFooter();
+  initReveal();
+
+  // ---------- Данные зала (как CafeTableConfig) ----------
+  const TABLES = [
+    { id: "t1", label: "Стол 1", seats: 2, zone: "У окна",   x: 1.2, y: 0.8, w: 1.6, d: 1.0, minDeposit: 0 },
+    { id: "t2", label: "Стол 2", seats: 2, zone: "У окна",   x: 3.6, y: 0.8, w: 1.6, d: 1.0, minDeposit: 0 },
+    { id: "t3", label: "Стол 3", seats: 4, zone: "Центр",    x: 1.2, y: 3.2, w: 2.0, d: 1.2, minDeposit: 500 },
+    { id: "t4", label: "Стол 4", seats: 4, zone: "Центр",    x: 4.2, y: 3.2, w: 2.0, d: 1.2, minDeposit: 500 },
+    { id: "t5", label: "Стол 5", seats: 6, zone: "Терраса",  x: 7.0, y: 2.2, w: 2.4, d: 1.4, minDeposit: 1000 },
+    { id: "t6", label: "Стол 6", seats: 2, zone: "Терраса",  x: 7.2, y: 0.4, w: 1.6, d: 1.0, minDeposit: 0 },
+  ];
+  const HALL_W = 9.5, HALL_D = 5.2;
+  const SLOTS = ["10:00", "11:30", "13:00", "14:30", "16:00", "17:30", "19:00", "20:30", "22:00"];
+
+  // ---------- Изометрия ----------
+  const TW = 78, TH = 40, OX = 370, OY = 110;
+  const iso = (x, y) => [OX + (x - y) * (TW / 2), OY + (x + y) * (TH / 2)];
+  const rhombus = (x, y, w, d, lift = 0) => {
+    const p = [iso(x, y), iso(x + w, y), iso(x + w, y + d), iso(x, y + d)];
+    return p.map(([sx, sy]) => `${sx},${sy - lift}`).join(" ");
+  };
+
+  const svg = document.querySelector("#hall");
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs = {}) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  };
+
+  // Пол с сеткой
+  svg.append(el("polygon", { points: rhombus(0, 0, HALL_W, HALL_D), fill: "oklch(0.27 0.024 58)", stroke: "oklch(0.42 0.03 58)", "stroke-width": 2 }));
+  for (let gx = 1; gx < HALL_W; gx++) {
+    const [x1, y1] = iso(gx, 0), [x2, y2] = iso(gx, HALL_D);
+    svg.append(el("line", { x1, y1, x2, y2, stroke: "oklch(0.34 0.026 58)", "stroke-width": 1 }));
+  }
+  for (let gy = 1; gy < HALL_D; gy++) {
+    const [x1, y1] = iso(0, gy), [x2, y2] = iso(HALL_W, gy);
+    svg.append(el("line", { x1, y1, x2, y2, stroke: "oklch(0.34 0.026 58)", "stroke-width": 1 }));
+  }
+  // Барная стойка (декор)
+  svg.append(el("polygon", { points: rhombus(0.3, 4.4, 5.4, 0.7, 14), fill: "oklch(0.38 0.035 55)" }));
+  svg.append(el("polygon", { points: rhombus(0.3, 4.4, 5.4, 0.7), fill: "oklch(0.30 0.03 55)" }));
+  const barLabel = el("text", { fill: "oklch(0.6 0.03 70)", "font-size": 12, "text-anchor": "middle" });
+  const [blx, bly] = iso(3.0, 4.75);
+  barLabel.setAttribute("x", blx); barLabel.setAttribute("y", bly - 4);
+  barLabel.textContent = "БАР";
+  svg.append(barLabel);
+
+  // Столы
+  const tableNodes = new Map();
+  for (const t of TABLES) {
+    const g = el("g", { class: "table-node", "data-id": t.id, tabindex: "0", role: "button", "aria-label": `${t.label}, ${t.seats} места, зона ${t.zone}` });
+    g.append(el("polygon", { points: rhombus(t.x, t.y, t.w, t.d), fill: "oklch(0.2 0.02 58)" })); // тень-основание
+    const top = el("polygon", { class: "table-top", points: rhombus(t.x, t.y, t.w, t.d, 12), fill: "oklch(0.5 0.05 58)", stroke: "oklch(0.3 0.02 58)", "stroke-width": 1.5 });
+    g.append(top);
+    // Боковая грань
+    const [a1x, a1y] = iso(t.x, t.y + t.d), [a2x, a2y] = iso(t.x + t.w, t.y + t.d);
+    g.append(el("polygon", {
+      points: `${a1x},${a1y - 12} ${a2x},${a2y - 12} ${a2x},${a2y} ${a1x},${a1y}`,
+      fill: "oklch(0.32 0.03 58)",
+    }));
+    const [cx, cy] = iso(t.x + t.w / 2, t.y + t.d / 2);
+    const label = el("text", { x: cx, y: cy - 12, fill: "#fff", "font-size": 12, "font-weight": 700, "text-anchor": "middle", dy: 4 });
+    label.textContent = t.label.replace("Стол ", "");
+    g.append(label);
+    svg.append(g);
+    tableNodes.set(t.id, { g, top, label });
+    g.addEventListener("click", () => selectTable(t.id));
+    g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectTable(t.id); } });
+  }
+
+  // ---------- Слоты и статусы ----------
+  let activeSlot = SLOTS[0];
+  let selectedTable = null;
+
+  // Детерминированная «занятость» для макета (в бою — Redis + БД)
+  function isOccupied(tableId, slot) {
+    let h = 0;
+    for (const ch of tableId + slot) h = (h * 31 + ch.charCodeAt(0)) % 997;
+    return h % 5 === 0;
+  }
+  function isHeld(tableId, slot) {
+    return getHolds().some((h) => h.tableId === tableId && h.slotIso === slot);
+  }
+  function statusOf(tableId, slot) {
+    if (isOccupied(tableId, slot)) return "occupied";
+    if (isHeld(tableId, slot)) return "held";
+    return "free";
+  }
+  const COLORS = { free: "oklch(0.62 0.1 155)", held: "oklch(0.74 0.115 62)", occupied: "oklch(0.55 0.1 25)" };
+
+  function paint() {
+    for (const t of TABLES) {
+      const { g, top, label } = tableNodes.get(t.id);
+      const st = statusOf(t.id, activeSlot);
+      top.setAttribute("fill", COLORS[st]);
+      top.setAttribute("opacity", st === "occupied" ? 0.55 : 0.95);
+      label.setAttribute("fill", st === "occupied" ? "oklch(0.7 0.02 70)" : "oklch(0.2 0.02 58)");
+      g.dataset.selected = String(selectedTable === t.id);
+      g.setAttribute("aria-label", `${t.label}, статус: ${{ free: "свободен", held: "в холде", occupied: "занят" }[st]}`);
+    }
+  }
+
+  const slotsRoot = document.querySelector("#slots");
+  for (const s of SLOTS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "slot";
+    b.textContent = s;
+    b.setAttribute("aria-pressed", String(s === activeSlot));
+    b.addEventListener("click", () => {
+      activeSlot = s;
+      slotsRoot.querySelectorAll(".slot").forEach((x) => x.setAttribute("aria-pressed", "false"));
+      b.setAttribute("aria-pressed", "true");
+      if (selectedTable) renderInfo();
+      paint();
+    });
+    slotsRoot.append(b);
+  }
+
+  const info = document.querySelector("#table-info");
+  function renderInfo() {
+    const t = TABLES.find((x) => x.id === selectedTable);
+    if (!t) return;
+    const st = statusOf(t.id, activeSlot);
+    const stLabel = { free: "Свободен", held: "В холде", occupied: "Занят" }[st];
+    info.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <h2>${t.label}</h2>
+        <span class="status-pill ${st}">${stLabel}</span>
+      </div>
+      <div class="info-row"><span>Зона</span><span>${t.zone}</span></div>
+      <div class="info-row"><span>Мест</span><span>${t.seats}</span></div>
+      <div class="info-row"><span>Слот</span><span>${activeSlot} · 90 минут</span></div>
+      <div class="info-row"><span>Депозит</span><span>${t.minDeposit ? t.minDeposit + " ₽" : "не нужен"}</span></div>
+      ${st === "free" ? `<button type="button" class="btn btn-primary" id="hold-btn">Удержать стол</button>` : ""}
+      ${st === "held" ? `<p class="muted">Этот стол уже удерживается. Слот освободится автоматически.</p>` : ""}
+      ${st === "occupied" ? `<p class="muted">Стол занят на этот слот — попробуйте другое время.</p>` : ""}`;
+    const btn = info.querySelector("#hold-btn");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        holdTable(t.id, activeSlot);
+        renderBanner();
+        renderInfo();
+        paint();
+      });
+    }
+  }
+
+  function selectTable(id) {
+    selectedTable = id;
+    renderInfo();
+    paint();
+  }
+
+  // ---------- Холд-баннер с таймером ----------
+  const banner = document.querySelector("#hold-banner");
+  const timerEl = document.querySelector("#hold-timer");
+  let timerId = null;
+
+  function renderBanner() {
+    const hold = getMyHold();
+    banner.classList.toggle("show", Boolean(hold));
+    clearInterval(timerId);
+    if (!hold) return;
+    const t = TABLES.find((x) => x.id === hold.tableId);
+    banner.querySelector(".muted").textContent = `${t.label} · ${hold.slotIso} удерживается за вами`;
+    const tick = () => {
+      const left = Math.max(0, hold.expiresAt - Date.now());
+      const m = String(Math.floor(left / 60000)).padStart(2, "0");
+      const s = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
+      timerEl.textContent = `${m}:${s}`;
+      if (left <= 0) {
+        renderBanner();
+        renderInfo();
+        paint();
+      }
+    };
+    tick();
+    timerId = setInterval(tick, 1000);
+  }
+  document.querySelector("#release").addEventListener("click", () => {
+    const hold = getMyHold();
+    if (hold) releaseHold(hold.tableId, hold.slotIso);
+    renderBanner();
+    renderInfo();
+    paint();
+  });
+
+  paint();
+  renderBanner();
+</script>
+</body>
+</html>

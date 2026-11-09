@@ -1,0 +1,315 @@
+// packages/database/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // Для миграций через Supabase Connection Pooler
+}
+
+// ==========================================
+// 1. ENUMS (Статусы и типы)
+// ==========================================
+
+enum Role {
+  CUSTOMER
+  BARISTA
+  COURIER
+  ADMIN
+}
+
+enum PrimitiveType {
+  CYLINDER // Идеально для слоев кофе в стакане, коржей торта
+  BOX      // Для брусков, пирожных, тирамису
+  SPHERE   // Для шариков мороженого, ягод, профитролей
+  TORUS    // Для пончиков, бейглов, колец крема
+  CUSTOM_MESH // Когда слой берется по имени меша из готового .glb файла
+}
+
+enum TableZone {
+  WINDOW  // У панорамного окна
+  CENTER  // Центр зала
+  QUIET   // Тихая зона для работы с ноутбуком
+  TERRACE // Летняя терраса
+}
+
+enum BookingStatus {
+  HELD      // Временный холд (10 мин на оплату, дублируется в Redis)
+  CONFIRMED // Оплачено / Подтверждено
+  SEATED    // Гость уже за столиком
+  COMPLETED // Визит завершен
+  CANCELLED // Отменено
+  EXPIRED   // Истек таймер оплаты
+}
+
+enum OrderType {
+  DINE_IN  // В кафе (может быть привязан к брони стола)
+  TAKEAWAY // С собой к определенному времени
+  DELIVERY // Доставка курьером на дом/в офис
+}
+
+enum OrderStatus {
+  PENDING       // Ожидает оплаты
+  COOKING_HOLD  // Оплачен (предзаказ к столу), ждет триггера от гостя в боте за 15 мин
+  COOKING       // Передан на экран бариста, готовится
+  READY         // Готов (ждет официанта, самовывоза или курьера)
+  DELIVERING    // В пути (для доставки)
+  COMPLETED     // Выдан / Доставлен
+  CANCELLED     // Отменен
+}
+
+// ==========================================
+// 2. ПОЛЬЗОВАТЕЛИ И АДРЕСА
+// ==========================================
+
+model User {
+  id           String   @id @default(cuid())
+  telegramId   BigInt?  @unique // BigInt обязателен для современных ID в Telegram
+  username     String?
+  firstName    String?
+  phone        String?  @unique
+  email        String?  @unique
+  role         Role     @default(CUSTOMER)
+  bonusPoints  Int      @default(0)
+
+  addresses    Address[]
+  bookings     Booking[]
+  orders       Order[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([telegramId])
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title        String   // Например: "Дом", "Офис"
+  street       String
+  building     String
+  apartment    String?
+  entrance     String?
+  floor        String?
+  intercom     String?
+  comment      String?
+
+  // Координаты для проверки вхождения в полигон доставки и расчета цены
+  latitude     Float
+  longitude    Float
+  isDefault    Boolean  @default(false)
+
+  orders       Order[]
+
+  createdAt    DateTime @default(now())
+}
+
+// ==========================================
+// 3. МЕНЮ И 3D-КОНСТРУКТОР (Exploded View)
+// ==========================================
+
+model Category {
+  id        String     @id @default(cuid())
+  slug      String     @unique // "coffee", "signature-drinks", "desserts", "bakery"
+  name      String
+  iconName  String?
+  sortOrder Int        @default(0)
+
+  items     MenuItem[]
+}
+
+model MenuItem {
+  id              String          @id @default(cuid())
+  categoryId      String
+  category        Category        @relation(fields: [categoryId], references: [id])
+
+  slug            String          @unique
+  name            String
+  description     String
+  basePrice       Decimal         @db.Decimal(10, 2)
+  baseCalories    Int             @default(0)
+  baseWeightGrams Int             @default(0)
+  prepTimeMinutes Int             @default(5)
+
+  isAvailable     Boolean         @default(true)
+  isFeatured      Boolean         @default(false)
+
+  // --- Настройки 3D-сцены для блюда ---
+  modelUrl        String?         // Ссылка на сжатый .glb в CDN (если null — рендерим из примитивов слоев)
+  previewImageUrl String?         // 2D-фоллбэк для старых устройств и превью в боте
+
+  // Векторы камеры для React Three Fiber: { "position": [0, 2, 5], "target": [0, 0.5, 0], "fov": 45 }
+  cameraPreset    Json            @default("{\"position\": [0, 1.8, 4.5], \"target\": [0, 0.5, 0], \"fov\": 42}")
+  scale3D         Float           @default(1.0)
+  ambientColorHex String          @default("#ffffff") // Подсветка фона под настроение блюда
+
+  layers          MenuItemLayer[]
+  orderItems      OrderItem[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([categoryId, isAvailable])
+}
+
+model MenuItemLayer {
+  id             String        @id @default(cuid())
+  menuItemId     String
+  menuItem       MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  // --- Привязка к 3D и анимации разлета (Exploded View) ---
+  meshName       String        // Имя узла внутри .glb (например, "Layer_Espresso_1")
+  primitiveType  PrimitiveType @default(CYLINDER)
+  layerOrder     Int           // Порядок снизу вверх (0 - основа/дно, 1 - крем, 2 - топпинг)
+
+  // Высота и координаты слоя в собранном и разобранном виде
+  basePositionY  Float         @default(0)   // Позиция Y в собранном виде
+  explodeOffsetY Float         @default(0.5) // На сколько единиц поднять слой при нажатии "Показать состав"
+  heightScale    Float         @default(0.2) // Толщина слоя (для процедурного стакана/десерта)
+  radiusScale    Float         @default(1.0) // Радиус слоя
+
+  // Позиция 3D-аннотации (<Html> из @react-three/drei) относительно центра слоя: [x, y, z]
+  labelPosition  Json          @default("[1.2, 0, 0]")
+
+  // --- Настройки материала (для процедурного рендера и шейдеров жидкости) ---
+  colorHex       String        @default("#6F4E37") // Цвет слоя (эспрессо, матча, малина)
+  opacity        Float         @default(1.0)       // Прозрачность (например, 0.85 для желе или льда)
+  roughness      Float         @default(0.4)       // Глянцевость (0.1 для глазури, 0.9 для бисквита)
+
+  // --- Пищевая ценность и логика кастомизации ---
+  title          String        // "Двойной эспрессо (Бразилия Серрадо)"
+  description    String?       // "Орехово-шоколадный профиль"
+  calories       Int           @default(0)
+  proteins       Float         @default(0)
+  fats           Float         @default(0)
+  carbs          Float         @default(0)
+  weightGrams    Int           @default(0)
+
+  isDefault      Boolean       @default(true)  // Включен ли слой в базовый рецепт
+  isRemovable    Boolean       @default(false) // Можно ли убрать (например, взбитые сливки или корицу)
+  isOptionalAdd  Boolean       @default(false) // Дополнительный платный слой (сироп, маршмеллоу)
+  priceModifier  Decimal       @default(0.00)  @db.Decimal(10, 2) // +0.00 для базы, +2.50 для доп. слоя
+
+  @@index([menuItemId, layerOrder])
+}
+
+// ==========================================
+// 4. 3D-КАРТА ЗАЛА И БРОНИРОВАНИЕ СТОЛОВ
+// ==========================================
+
+model CafeTable {
+  id             String    @id @default(cuid())
+  number         Int       @unique // Номер стола (1..20)
+  title          String    // "Столик №4 у панорамного окна"
+  seats          Int       @default(2)
+  zone           TableZone @default(CENTER)
+  hasPowerOutlet Boolean   @default(false) // Важный фильтр для тех, кто идет с ноутбуком
+  minDeposit     Decimal   @default(0.00)  @db.Decimal(10, 2)
+  isActive       Boolean   @default(true)
+
+  // --- Координаты на 3D-диораме зала ---
+  meshName       String    @unique // Имя объекта в сцене зала ("Table_Mesh_04")
+  position3D     Json      // [x, y, z] на 3D-карте кофейни
+  rotationY      Float     @default(0) // Поворот стола в радианах
+  cameraFocus    Json?     // Ракурс, куда подлетает камера при клике на этот стол
+
+  bookings       Booking[]
+}
+
+model Booking {
+  id                  String        @id @default(cuid())
+  userId              String
+  user                User          @relation(fields: [userId], references: [id])
+
+  tableId             String
+  table               CafeTable     @relation(fields: [tableId], references: [id])
+
+  startTime           DateTime      // Начало брони (например, 2026-11-03T18:00:00Z)
+  endTime             DateTime      // Конец брони (например, 2026-11-03T19:30:00Z)
+  guestsCount         Int           @default(2)
+  status              BookingStatus @default(HELD)
+
+  // Для интеграции с Upstash Redis и Telegram-ботом
+  holdExpiresAt       DateTime?     // До какого момента держим лок на оплату (startTime создания + 10 мин)
+  reminderSent        Boolean       @default(false) // Отправил ли бот пуш за 15 минут до визита
+  specialRequests     String?       // Пожелания ("Нужен детский стульчик", "Буду с собакой")
+
+  // Связь с предзаказом еды к приходу
+  orders              Order[]
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Индекс для моментального поиска занятых столов на выбранный тайм-слот в RTK Query
+  @@index([tableId, startTime, endTime, status])
+  @@index([userId])
+}
+
+// ==========================================
+// 5. ЗАКАЗЫ (В кафе с бронью / Доставка / С собой)
+// ==========================================
+
+model Order {
+  id                    String      @id @default(cuid())
+  orderNumber           Int         @default(autoincrement()) // Короткий номер заказа (например, #1042)
+
+  userId                String
+  user                  User        @relation(fields: [userId], references: [id])
+
+  type                  OrderType   @default(DINE_IN)
+  status                OrderStatus @default(PENDING)
+
+  // Если заказ привязан к брони столика (сценарий "Готовить к моему приходу")
+  bookingId             String?
+  booking               Booking?    @relation(fields: [bookingId], references: [id])
+  scheduledCookTime     DateTime?   // Точное время, когда бариста должен начать готовить
+  isTriggeredByGuest    Boolean     @default(false) // Нажал ли гость кнопку "🔥 Готовьте сейчас" в боте
+
+  // Если заказ на доставку
+  addressId             String?
+  address               Address?    @relation(fields: [addressId], references: [id])
+  deliveryFee           Decimal     @default(0.00) @db.Decimal(10, 2)
+  estimatedDeliveryTime DateTime?
+
+  // Финансы
+  itemsTotal            Decimal     @db.Decimal(10, 2)
+  bonusSpent            Int         @default(0)
+  finalTotal            Decimal     @db.Decimal(10, 2)
+  isPaid                Boolean     @default(false)
+  paymentIntentId       String?
+
+  // Для live-обновления плашки статуса в чате Telegram-бота (editMessageText)
+  telegramMessageId     Int?
+
+  items                 OrderItem[]
+
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@index([userId, status])
+  @@index([bookingId])
+}
+
+model OrderItem {
+  id                  String   @id @default(cuid())
+  orderId             String
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  menuItemId          String
+  menuItem            MenuItem @relation(fields: [menuItemId], references: [id])
+
+  quantity            Int      @default(1)
+  unitPrice           Decimal  @db.Decimal(10, 2) // Цена за 1 шт с учетом всех добавленных/убранных слоев
+  totalPrice          Decimal  @db.Decimal(10, 2) // unitPrice * quantity
+
+  // Слепок 3D-кастомизации: какие слои добавлены/убраны пользователем в конструкторе
+  // Формат: { "activeLayerIds": ["id1", "id2"], "removedTitles": ["Взбитые сливки"], "addedTitles": ["Сироп Соленая карамель"] }
+  customConfiguration Json     @default("{}")
+
+  @@index([orderId])
+}

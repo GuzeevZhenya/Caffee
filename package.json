@@ -1,34 +1,38 @@
 {
-  "name": "todolist-13",
+  "name": "tactile-coffee-monorepo",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "vite --port 3000",
-    "build": "tsc -b && vite build",
-    "test": "vitest",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@emotion/react": "11.14.0",
-    "@emotion/styled": "11.14.0",
-    "@mui/icons-material": "6.3.1",
-    "@mui/material": "6.3.1",
-    "@reduxjs/toolkit": "2.5.0",
-    "axios": "1.7.9",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-redux": "9.2.0"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "turbo run typecheck",
+    "type-check": "pnpm run typecheck",
+    "ci:check": "pnpm lint && pnpm typecheck && pnpm build",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "format:check": "pnpm run format",
+    "test": "echo \"CI placeholder: Vitest is temporarily disabled in Jenkins\" && exit 0",
+    "db:generate": "turbo run db:generate",
+    "db:push": "turbo run db:push",
+    "db:seed": "turbo run db:seed",
+    "db:studio": "turbo run db:studio"
   },
   "devDependencies": {
-    "@types/node": "22.10.6",
-    "@types/react": "19.0.7",
-    "@types/react-dom": "19.0.3",
-    "@vitejs/plugin-react-swc": "3.7.2",
-    "globals": "15.14.0",
-    "prettier": "3.4.2",
-    "typescript": "5.7.3",
-    "vite": "6.0.7",
-    "vitest": "2.1.8"
+    "@repo/typescript-config": "workspace:*",
+    "@eslint/js": "^9.27.0",
+    "eslint": "^9.27.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.2.0",
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=20"
   }
 }

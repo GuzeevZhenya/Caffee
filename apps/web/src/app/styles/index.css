@@ -1,0 +1,306 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500;1,600&display=swap");
+@import "tailwindcss";
+
+/* ============================================================
+   Tactile Craft Coffee — дизайн-система «вечерний эспрессо-бар».
+   Перенесено из mockup/src/css/style.css: тёплый почти чёрный фон,
+   карамельный акцент, Playfair Display + Manrope, зернистая текстура.
+   ============================================================ */
+
+@theme {
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-display: "Playfair Display", "Georgia", serif;
+
+  /* Примитивы (OKLCH) — «вечерний премиум» */
+  --color-ink-900: oklch(0.145 0.008 55);
+  --color-ink-800: oklch(0.178 0.013 55);
+  --color-ink-700: oklch(0.212 0.02 55);
+  --color-ink-600: oklch(0.272 0.026 55);
+  --color-ink-500: oklch(0.352 0.03 55);
+  --color-gold: oklch(0.72 0.1 62);
+  --color-gold-deep: oklch(0.575 0.088 55);
+  --color-cream: oklch(0.93 0.028 82);
+  --color-cream-dim: oklch(0.72 0.045 78);
+  --color-mint: oklch(0.78 0.09 160);
+  --color-rose-warm: oklch(0.68 0.13 25);
+
+  --radius-s: 8px;
+  --radius-m: 14px;
+  --radius-l: 22px;
+
+  /* Анимация смены Current Pick */
+  --animate-cp-in: cp-in 0.24s ease;
+}
+
+@keyframes cp-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply min-h-dvh bg-ink-900 font-sans text-cream antialiased;
+    font-size: 16px;
+    line-height: 1.65;
+    overflow-x: hidden;
+  }
+
+  /* Зернистая текстура поверх всего (как в макете) */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    font-weight: 600;
+    line-height: 1.15;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  a {
+    @apply text-gold no-underline;
+  }
+  a:hover {
+    @apply text-cream;
+  }
+
+  button {
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: oklch(0.72 0.1 62 / 0.35);
+  }
+}
+
+@layer components {
+  /* Центровщик страницы (аналог .wrap в макете) */
+  .wrap {
+    width: min(1200px, 100% - 40px);
+    margin-inline: auto;
+  }
+
+  /* ---------- Кнопки ---------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 28px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1;
+    min-height: 44px;
+    transition:
+      transform 0.18s ease,
+      background 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+  }
+  .btn:active {
+    transform: translateY(0);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-primary {
+    background: var(--color-gold);
+    color: var(--color-ink-900);
+  }
+  .btn-primary:hover {
+    background: var(--color-cream);
+    color: var(--color-ink-900);
+  }
+  .btn-ghost {
+    border-color: var(--color-ink-500);
+    color: var(--color-cream);
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-gold);
+    color: var(--color-gold);
+  }
+
+  /* ---------- Карточки ---------- */
+  .card {
+    @apply rounded-l border border-ink-500 bg-ink-700 p-6;
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-gold-deep);
+  }
+
+  /* ---------- Чипы (фильтры) ---------- */
+  .chip {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--color-ink-500);
+    background: transparent;
+    color: var(--color-cream-dim);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1;
+    min-height: 36px;
+    transition: all 0.18s ease;
+  }
+  .chip:hover {
+    border-color: var(--color-gold);
+    color: var(--color-cream);
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--color-gold);
+    border-color: var(--color-gold);
+    color: var(--color-ink-900);
+  }
+
+  /* ---------- Пилюля навигации ---------- */
+  .nav-pill {
+    padding: 8px 14px;
+    border-radius: 999px;
+    color: var(--color-cream-dim);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      color 0.2s ease,
+      background 0.2s ease;
+  }
+  .nav-pill:hover {
+    background: var(--color-ink-600);
+    color: var(--color-cream);
+  }
+  .nav-pill[data-active="true"] {
+    background: var(--color-gold);
+    color: var(--color-ink-900);
+  }
+
+  /* ---------- Типографика секций ---------- */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-gold);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 34px;
+    height: 1px;
+    background: var(--color-gold);
+  }
+  .eyebrow-center {
+    justify-content: center;
+  }
+  .eyebrow-center::before {
+    display: none;
+  }
+
+  .section-title {
+    font-size: clamp(26px, 4vw, 44px);
+    margin-top: 12px;
+  }
+  .section-sub {
+    color: var(--color-cream-dim);
+    max-width: 60ch;
+    margin-top: 12px;
+  }
+
+  /* ---------- Тег ---------- */
+  .tag {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: oklch(0.2 0.02 58 / 0.7);
+    color: var(--color-gold);
+  }
+
+  /* ---------- Поля формы ---------- */
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .field-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-cream-dim);
+  }
+  .field-input {
+    width: 100%;
+    background: var(--color-ink-900);
+    border: 1px solid var(--color-ink-500);
+    border-radius: var(--radius-s);
+    color: var(--color-cream);
+    padding: 12px 14px;
+    font: 400 15px/1.4 var(--font-sans);
+    transition: border-color 0.18s ease;
+    color-scheme: dark;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-gold);
+  }
+
+  /* ---------- Появление при скролле ---------- */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.6s ease,
+      transform 0.6s ease;
+  }
+  .reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
