@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "build:web": "pnpm --filter @repo/web build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "turbo run typecheck",
@@ -12,7 +13,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "format:check": "pnpm run format",
-    "test": "echo \"CI placeholder: Vitest is temporarily disabled in Jenkins\" && exit 0",
+    "test": "echo \"No unit tests yet\" && exit 0",
     "db:generate": "turbo run db:generate",
     "db:push": "turbo run db:push",
     "db:seed": "turbo run db:seed",

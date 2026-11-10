@@ -1,5 +1,6 @@
 import { TableStatusBadge, useGetTablesForSlotQuery } from "@/entities/table";
 import { HoldTableButton } from "@/features/book-table";
+import { safeLoadErrorMessage } from "@/shared/lib";
 import { useState } from "react";
 
 function todayIso(): string {
@@ -24,7 +25,7 @@ export function BookingPage() {
   } = useGetTablesForSlotQuery({ date, slot }, { skip: !isValid });
 
   return (
-    <div className="wrap flex flex-col gap-6 pb-16 pt-16">
+    <div className="wrap flex flex-col gap-5 pb-12 pt-10 sm:gap-6 sm:pb-16 sm:pt-16">
       <div>
         <p className="eyebrow">Зал</p>
         <h1 className="section-title">Бронирование столика</h1>
@@ -57,11 +58,7 @@ export function BookingPage() {
       </div>
 
       {isLoading ? <p className="text-cream-dim">Проверяю столики…</p> : null}
-      {isError ? (
-        <p className="text-rose-warm">
-          Не удалось получить статусы. Проверьте, что запущен apps/api.
-        </p>
-      ) : null}
+      {isError ? <p className="text-cream-dim">{safeLoadErrorMessage()}</p> : null}
 
       {tables ? (
         <ul className="flex flex-col gap-3">

@@ -49,7 +49,7 @@ export function CustomizerPanel({ item }: CustomizerPanelProps) {
           return (
             <li
               key={layer.id}
-              className={`grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 rounded-m border border-ink-500 bg-ink-700 px-3.5 py-3 transition-opacity ${
+              className={`grid grid-cols-[auto_1fr_auto_auto] items-center gap-2 border border-ink-500 bg-ink-800/40 px-3 py-2.5 transition-opacity sm:gap-3 sm:px-3.5 sm:py-3 ${
                 isActive ? "" : "opacity-45"
               }`}
             >

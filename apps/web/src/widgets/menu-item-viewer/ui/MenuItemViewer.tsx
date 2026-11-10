@@ -16,14 +16,12 @@ interface MenuItemViewerProps {
 }
 
 /**
- * Страница блюда: полномасштабное фото слева, справа — «указатели» слоёв
- * (название, объём, ккал) с переключателями кастомизации и итоговый блок.
- * Цена и КБЖУ пересчитываются через shared-калькулятор.
+ * Страница блюда: полный кадр фото (без обрезки) + состав.
+ * Фон страницы — единый ink-900, как правая колонка.
  */
 export function MenuItemViewer({ item }: MenuItemViewerProps) {
   const dispatch = useAppDispatch();
 
-  // Лениво инициализируем дефолтный рецепт при открытии блюда
   useEffect(() => {
     dispatch(initializeCustomization(item));
   }, [dispatch, item]);
@@ -36,28 +34,31 @@ export function MenuItemViewer({ item }: MenuItemViewerProps) {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-      {/* Полномасштабное фото блюда */}
-      <div className="relative grid min-h-[440px] place-items-center overflow-hidden rounded-l border border-ink-500 bg-ink-700 lg:min-h-[560px]">
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <div className="menu-item-photo-stage mx-auto w-full max-w-[520px] lg:mx-0 lg:max-w-none">
         <DrinkPhoto
           item={item}
-          className="size-full"
-          imgClassName="absolute inset-0 size-full object-contain p-6 drop-shadow-[0_24px_48px_oklch(0_0_0/0.55)]"
+          fit="contain"
+          className="w-full"
+          imgClassName="block h-auto w-full object-contain"
+          activeLayerIds={configuration.activeLayerIds}
         />
       </div>
 
-      <aside className="grid content-start gap-5">
+      <aside className="grid min-w-0 content-start gap-4">
         <div>
-          <h1 className="text-[clamp(24px,3vw,34px)]">{item.name}</h1>
+          <h1 className="text-[clamp(22px,2.8vw,32px)] leading-tight">{item.name}</h1>
           <p className="mt-1 text-sm text-cream-dim">{item.description}</p>
         </div>
 
         <CustomizerPanel item={item} />
 
-        <div className="grid gap-4 rounded-m border border-ink-500 bg-ink-700 p-5">
-          <div className="flex items-baseline justify-between">
-            <span className="text-cream-dim">Итого · {totals.weightGrams} г</span>
-            <span className="font-display text-3xl font-bold">{formatPrice(totals.unitPrice)}</span>
+        <div className="grid gap-3 border border-ink-500/80 bg-ink-800/40 p-4 sm:p-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-cream-dim">Итого · {totals.weightGrams} г</span>
+            <span className="font-display text-2xl font-bold sm:text-3xl">
+              {formatPrice(totals.unitPrice)}
+            </span>
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
             {[
@@ -66,9 +67,9 @@ export function MenuItemViewer({ item }: MenuItemViewerProps) {
               [totals.fats, "жиры"],
               [totals.carbs, "углев."],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-s border border-ink-500 px-1 py-2">
-                <strong className="block font-display text-[15px]">{value}</strong>
-                <span className="text-[11px] uppercase tracking-[0.08em] text-cream-dim">
+              <div key={label} className="border border-ink-500/80 px-1 py-2">
+                <strong className="block font-display text-[14px] sm:text-[15px]">{value}</strong>
+                <span className="text-[10px] uppercase tracking-[0.08em] text-cream-dim sm:text-[11px]">
                   {label}
                 </span>
               </div>
@@ -77,16 +78,6 @@ export function MenuItemViewer({ item }: MenuItemViewerProps) {
           <button type="button" onClick={handleAddToCart} className="btn btn-primary w-full">
             В корзину — {formatPrice(totals.unitPrice)}
           </button>
-          {/* {configuration.removedTitles.length > 0 || configuration.addedTitles.length > 0 ? (
-            <p className="text-xs text-cream-dim">
-              {configuration.removedTitles.length > 0
-                ? `Без: ${configuration.removedTitles.join(", ")}. `
-                : ""}
-              {configuration.addedTitles.length > 0
-                ? `Добавлено: ${configuration.addedTitles.join(", ")}.`
-                : ""}
-            </p>
-          ) : null} */}
         </div>
       </aside>
     </div>

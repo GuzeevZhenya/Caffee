@@ -9,21 +9,9 @@ import {
   setOrderType,
   setQuantity,
 } from "@/features/cart";
-import { formatPrice } from "@/shared/lib";
-import type { ApiErrorResponse, CreateOrderInput } from "@repo/shared";
+import { formatPrice, safeOrderErrorMessage } from "@/shared/lib";
+import type { CreateOrderInput } from "@repo/shared";
 import { Link } from "react-router";
-
-function errorMessage(error: unknown): string {
-  if (typeof error === "object" && error !== null && "data" in error) {
-    const data = (error as { data?: ApiErrorResponse }).data;
-    if (data?.message) return data.message;
-    if (data?.error === "database_unavailable") {
-      return "База данных недоступна — заполните .env и поднимите Supabase.";
-    }
-    if (data?.error) return data.error;
-  }
-  return "Не удалось создать заказ. Попробуйте ещё раз.";
-}
 
 /** Корзина и оформление заказа (дизайн mockup/checkout.html) */
 export function CheckoutPage() {
@@ -186,7 +174,7 @@ export function CheckoutPage() {
         </button>
       </div>
 
-      {error ? <p className="text-sm text-rose-warm">{errorMessage(error)}</p> : null}
+      {error ? <p className="text-sm text-rose-warm">{safeOrderErrorMessage(error)}</p> : null}
     </div>
   );
 }

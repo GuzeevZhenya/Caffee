@@ -30,6 +30,7 @@
 
   /* Анимация смены Current Pick */
   --animate-cp-in: cp-in 0.24s ease;
+  --animate-float: float 5.5s ease-in-out infinite;
 }
 
 @keyframes cp-in {
@@ -40,6 +41,16 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
   }
 }
 
@@ -100,10 +111,129 @@
 }
 
 @layer components {
-  /* Центровщик страницы (аналог .wrap в макете) */
+  /* Центровщик: на desktop шире, на mobile плотнее к краям */
   .wrap {
-    width: min(1200px, 100% - 40px);
+    width: min(1280px, calc(100% - 24px));
     margin-inline: auto;
+  }
+  @media (min-width: 640px) {
+    .wrap {
+      width: min(1280px, calc(100% - 32px));
+    }
+  }
+  @media (min-width: 1280px) {
+    .wrap {
+      width: min(1320px, calc(100% - 48px));
+    }
+  }
+
+  /*
+   * Hero-сцена: напиток на «софт-спотлайте», без жёсткого овального выреза.
+   * Свечение и тень отдельными слоями — фото только мягко растворяется по краям.
+   */
+  .hero-center-stage {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    place-items: center;
+  }
+  .hero-center-glow {
+    position: absolute;
+    inset: 8% 2% 4%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse 48% 38% at 50% 58%,
+        oklch(0.72 0.1 62 / 0.2),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 70% 55% at 50% 62%,
+        oklch(0.22 0.03 55 / 0.55),
+        transparent 78%
+      );
+    filter: blur(10px);
+  }
+  .hero-center-shadow {
+    position: absolute;
+    z-index: 0;
+    left: 50%;
+    bottom: 4%;
+    width: min(46%, 220px);
+    height: 12%;
+    translate: -50% 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse, oklch(0 0 0 / 0.55), transparent 72%);
+    filter: blur(8px);
+  }
+  .hero-center-photo {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 22px 40px oklch(0 0 0 / 0.5));
+    -webkit-mask-image: radial-gradient(
+      ellipse 96% 98% at 50% 46%,
+      #000 58%,
+      rgba(0, 0, 0, 0.72) 78%,
+      transparent 97%
+    );
+    mask-image: radial-gradient(
+      ellipse 96% 98% at 50% 46%,
+      #000 58%,
+      rgba(0, 0, 0, 0.72) 78%,
+      transparent 97%
+    );
+  }
+
+  /*
+   * Страница блюда: единый тёмный фон (как правая колонка).
+   * dark — почти чёрный кофейный; caramel — чуть теплее для десертов.
+   * Фото — полный кадр (object-contain). Мягкая маска растворяет
+   * студийный прямоугольник JPG в фон, продукт в центре цел.
+   */
+  .menu-item-detail-wash {
+    --detail-ground: #0f0a08;
+    background: var(--detail-ground);
+    min-height: 70dvh;
+    overflow: hidden;
+  }
+  .menu-item-detail-wash[data-tone="dark"] {
+    --detail-ground: #0f0a08;
+  }
+  .menu-item-detail-wash[data-tone="caramel"] {
+    --detail-ground: #24160f;
+  }
+  .menu-item-detail-wash::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: var(--detail-photo, none);
+    background-size: cover;
+    background-position: center;
+    filter: blur(40px) saturate(0.9) brightness(0.45);
+    transform: scale(1.2);
+    opacity: 0.35;
+  }
+  .menu-item-detail-wash::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: color-mix(in oklab, var(--detail-ground) 72%, transparent);
+  }
+  .menu-item-detail-wash[data-tone="caramel"]::before {
+    filter: blur(40px) saturate(1.05) brightness(0.55);
+    opacity: 0.42;
+  }
+  .menu-item-detail-wash[data-tone="caramel"]::after {
+    background: color-mix(in oklab, var(--detail-ground) 60%, transparent);
+  }
+  .menu-item-photo-stage {
+    position: relative;
+    background: transparent;
   }
 
   /* ---------- Кнопки ---------- */
@@ -204,7 +334,9 @@
     background: var(--color-ink-600);
     color: var(--color-cream);
   }
-  .nav-pill[data-active="true"] {
+  .nav-pill[aria-current="page"],
+  .nav-pill[data-active="true"],
+  .nav-pill:has([data-active="true"]) {
     background: var(--color-gold);
     color: var(--color-ink-900);
   }

@@ -22,39 +22,39 @@ const LOGO_SVG = (
   </svg>
 );
 
-/** Шапка «вечернего эспрессо-бара»: логотип, пилюли навигации, счётчик корзины */
+/** Шапка: логотип, навигация, корзина */
 export function AppHeader() {
   const cartCount = useAppSelector(selectCartCount);
 
   return (
     <header className="sticky top-0 z-50 border-b border-ink-500 bg-ink-900/80 backdrop-blur-[14px]">
-      <div className="wrap flex min-h-[68px] flex-wrap items-center gap-x-8 gap-y-2 py-2.5">
+      <div className="wrap flex min-h-[60px] items-center gap-3 py-2 sm:min-h-[68px] sm:gap-5 sm:py-2.5">
         <Link
           to="/"
-          className="flex items-center gap-2.5 whitespace-nowrap font-display text-[17px] font-bold tracking-[0.02em] text-cream hover:text-gold"
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap font-display text-[16px] font-bold tracking-[0.02em] text-cream hover:text-gold sm:gap-2.5 sm:text-[17px]"
           aria-label="Tactile Craft Coffee — на главную"
         >
           {LOGO_SVG}
           <span>TACTILE</span>
         </Link>
 
-        <nav className="flex w-full items-center gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:ml-auto lg:w-auto [&::-webkit-scrollbar]:hidden">
+        <nav className="ml-auto flex min-w-0 items-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden">
           {NAV_ITEMS.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.to === "/"} className="nav-pill">
-              {({ isActive }) => <span data-active={isActive || undefined}>{item.label}</span>}
+              {item.label}
             </NavLink>
           ))}
-          <NavLink to="/checkout" className="nav-pill" aria-label="Корзина">
-            {({ isActive }) => (
-              <span data-active={isActive || undefined} className="inline-flex items-center gap-2">
-                Корзина
-                {cartCount > 0 ? (
-                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold-deep px-1.5 text-xs font-bold text-cream">
-                    {cartCount}
-                  </span>
-                ) : null}
+          <NavLink
+            to="/checkout"
+            className="nav-pill inline-flex items-center gap-2"
+            aria-label="Корзина"
+          >
+            Корзина
+            {cartCount > 0 ? (
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-gold-deep px-1.5 text-xs font-bold text-cream">
+                {cartCount}
               </span>
-            )}
+            ) : null}
           </NavLink>
         </nav>
       </div>
