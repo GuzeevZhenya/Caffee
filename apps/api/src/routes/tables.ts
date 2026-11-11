@@ -1,4 +1,5 @@
 import { broadcastTableLock } from "../lib/broadcast";
+import { databaseConfigured, databaseErrorText } from "../lib/database-configured";
 import {
   getTableLock,
   getTableLocks,
@@ -10,7 +11,9 @@ import {
   type TableLock,
 } from "@repo/database";
 import {
+  BOOKING_SLOT_MINUTES,
   holdTableSchema,
+  isMockTableBooked,
   MOCK_TABLES,
   tableSlotQuerySchema,
   type CafeTableConfig,
@@ -20,8 +23,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 
-/** Длительность слота брони по умолчанию (мин) — для проверки пересечений */
-const SLOT_DURATION_MINUTES = 90;
+/** Длительность слота брони — общая с формой и моками (2 часа). */
 
 const releaseBodySchema = z.object({
   tableId: z.string().min(1),
@@ -56,11 +58,12 @@ export const tablesRoutes = new Hono()
       return c.json({ error: "invalid_slot_datetime" }, 400);
     }
     const slotStartIso = slotStart.toISOString();
-    const slotEnd = new Date(slotStart.getTime() + SLOT_DURATION_MINUTES * 60_000);
+    const slotEnd = new Date(slotStart.getTime() + BOOKING_SLOT_MINUTES * 60_000);
     const guestId = c.req.header("x-guest-id");
 
     let tables: CafeTableConfig[];
     let bookedTableIds = new Set<string>();
+    let useMockOccupancy = false;
     try {
       const [rows, bookings] = await Promise.all([
         prisma.cafeTable.findMany({ where: { isActive: true }, orderBy: { number: "asc" } }),
@@ -76,11 +79,19 @@ export const tablesRoutes = new Hono()
       tables = rows.map(toCafeTableConfig);
       bookedTableIds = new Set(bookings.map((booking) => booking.tableId));
     } catch (error) {
+      if (databaseConfigured()) {
+        console.error(
+          "[api/tables] Supabase недоступен:",
+          databaseErrorText(error),
+        );
+        return c.json({ error: "database_unavailable" }, 503);
+      }
       console.warn(
-        "[api/tables] БД недоступна, отдаю моковые столы:",
+        "[api/tables] DATABASE_URL не задан, отдаю моковые столы:",
         error instanceof Error ? error.message : error,
       );
       tables = MOCK_TABLES;
+      useMockOccupancy = true;
     }
 
     let locks: Record<string, TableLock> = {};
@@ -101,7 +112,12 @@ export const tablesRoutes = new Hono()
         const heldByMe = Boolean(lock && guestId && lock.userId === guestId);
         return {
           ...table,
-          status: lock ? "HELD" : bookedTableIds.has(table.id) ? "BOOKED" : "FREE",
+          status: lock
+            ? "HELD"
+            : bookedTableIds.has(table.id) ||
+                (useMockOccupancy && isMockTableBooked(table.number, slot))
+              ? "BOOKED"
+              : "FREE",
           heldUntil: lock?.expiresAt ?? null,
           heldByMe,
         };
@@ -119,7 +135,7 @@ export const tablesRoutes = new Hono()
     }
 
     const guestId = c.req.header("x-guest-id") ?? "anonymous";
-    const { tableId, startTime, endTime, guestsCount } = parsed.data;
+    const { tableId, startTime, endTime, guestsCount, guestName, guestPhone } = parsed.data;
     const slotStartIso = startTime.toISOString();
 
     try {
@@ -143,10 +159,10 @@ export const tablesRoutes = new Hono()
       try {
         const guest = await prisma.user.upsert({
           where: { email: guestEmail(guestId) },
-          update: {},
+          update: guestName ? { firstName: guestName } : {},
           create: {
             email: guestEmail(guestId),
-            firstName: "Гость",
+            firstName: guestName ?? "Гость",
           },
         });
 
@@ -159,12 +175,21 @@ export const tablesRoutes = new Hono()
             guestsCount: guestsCount ?? 2,
             status: "HELD",
             holdExpiresAt: new Date(heldUntil),
+            specialRequests: guestPhone ? `Телефон: ${guestPhone}` : null,
           },
         });
         bookingId = booking.id;
       } catch (error) {
+        if (databaseConfigured()) {
+          await unlockTable(tableId, slotStartIso, guestId).catch(() => undefined);
+          console.error(
+            "[api/tables/hold] Booking в Supabase не создан:",
+            databaseErrorText(error),
+          );
+          return c.json({ error: "database_unavailable" }, 503);
+        }
         console.warn(
-          "[api/tables/hold] Booking в БД не создан (мок-режим Redis-only):",
+          "[api/tables/hold] Booking в БД не создан (нет DATABASE_URL):",
           error instanceof Error ? error.message : error,
         );
       }

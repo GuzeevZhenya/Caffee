@@ -1,3 +1,4 @@
+import { demoStaffAllowed, demoStaffByEmail } from "./demo-staff";
 import { prisma } from "@repo/database";
 import { STAFF_ROLES, type StaffRole, type StaffUser } from "@repo/shared";
 import type { Context } from "hono";
@@ -61,7 +62,14 @@ export async function resolveStaffUser(c: Context): Promise<StaffUser | null> {
       role: user.role as StaffRole,
       firstName: user.firstName,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (!demoStaffAllowed()) return null;
+    console.warn(
+      "[api/auth/me] БД недоступна, проверяю демо-сессию:",
+      error instanceof Error ? error.message : error,
+    );
+    const demo = demoStaffByEmail(payload.email);
+    if (!demo || demo.id !== payload.sub || demo.role !== payload.role) return null;
+    return demo;
   }
 }

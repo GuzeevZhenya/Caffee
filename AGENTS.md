@@ -1,197 +1,115 @@
 # AGENTS.md — Tactile Craft Coffee & Bakery
 
-> Контекстный файл для агентов и новых участников. Читать первым при входе в проект.
+> Контекст для агентов и разработчиков. Читать перед правками. Карта файлов — `STRUCTURE.md`. Открытые задачи — `.docs/backlog/README.md`.
 
-## Что это за проект
+## Критические правила
 
-Веб-приложение кофейни с тремя ядрами:
+1. **Граница web ↔ api.** Не импортировать `@repo/database` в `apps/web`. Данные только через RTK Query (`@/shared/api/baseApi`). API не импортирует код из web.
+2. **Цена и КБЖУ.** Только `calculateItemTotals` из `@repo/shared`. На сервере цена пересчитывается заново; клиентским суммам не доверяем.
+3. **FSD.** В `apps/web/src` импорты только вниз: `app > pages > widgets > features > entities > shared`. Слайс снаружи — только через `index.ts`. Кросс-импорт на одном уровне запрещён, кроме `entities` через публичный API.
+4. **Секреты.** Не читать и не перезаписывать `.env`. Новые переменные — в `.env.example` пустыми. В браузере только `VITE_*`.
+5. **Схема БД.** Правки в `packages/database/prisma/schema.prisma`, затем `pnpm db:generate`. Отдельной генерации Supabase-типов нет: наружу идут мапперы в shared-типы.
+6. **Сдача.** Перед финальным ответом — `pnpm ci:check` (`lint` + `typecheck` + `build`). Prettier отдельно: `pnpm format`. Если запрос ломает правила 1–3, сказать об этом до кода.
+7. **Коммиты.** Только по явной просьбе. Conventional Commits, описание на русском, без `Co-authored-by`.
 
-1. **Интерактивное меню по слоям** — каждое блюдо раскладывается на слои (`basePositionY`/`explodeOffsetY` в конфиге), на странице блюда — полномасштабное фото и «указатели» слоёв с названием, граммовкой и КБЖУ. Кастомизация слоёв (убрать/добавить) реактивно пересчитывает цену и калории через единый калькулятор.
-2. **Карта бронирования столов** — защита от овербукинга через атомарный лок в Upstash Redis (`lock:table:{id}:{slot}`, TTL 10 минут) + realtime-рассылка статусов через Supabase Realtime (3D-диорама зала — в Фазе 4).
-3. **Telegram-бот** — доставка (геолокация, полигон зоны), предзаказ к столику с триггером «🔥 Готовить сейчас» за 15 минут до брони.
+## Что это
 
-## Структура монорепозитория (Turborepo + pnpm)
+Веб-приложение одной кофейни. Три ядра:
 
-```
-apps/
-  web/        Vite 6 + React 19 + react-router 7 + Tailwind 4 + Redux Toolkit/RTK Query, FSD-архитектура
-  api/        Hono 4 + @hono/node-server — HTTP API (порт 4000), единственное приложение с доступом к БД
-  bot/        grammY (conversations, menu), smoke-скелет до Фазы 5
-packages/
-  shared/     @repo/shared — типы, Zod-схемы, калькулятор цены/КБЖУ, моки меню и столов
-  database/   @repo/database — Prisma-схема, PrismaClient singleton, Redis-локи, seed, мапперы Decimal→number
-  typescript-config/  общие tsconfig (base / react / node)
-```
+1. **Меню по слоям** — фото блюда, состав (название, граммы, КБЖУ), кастомизация с пересчётом цены и калорий. 3D/R3F снят в фазе 3.5. Типы слоя в `packages/shared/src/types/three-menu.types.ts` остаются контрактом данных, не сценой.
+2. **Карта зала** — 2D SVG (`widgets/hall-map`). Холд: Redis `lock:table:{tableId}:{slotStartIso}`, TTL 10 минут, затем `Booking(HELD)` и `bookingId`. Realtime — Supabase, канал `cafe-tables`.
+3. **Telegram-бот** — фаза 5, сейчас smoke-скелет grammY: доставка по полигону и триггер «Готовить сейчас» за 15 минут до брони.
 
-Пакеты `shared` и `database` отдаются как TS-исходники (без build-шага). Подробная карта всех файлов («что за что отвечает») — в `STRUCTURE.md`.
+## Монорепозиторий
 
-### Архитектурная граница web ↔ api
+Turborepo + pnpm. Пакеты `shared` и `database` отдаются исходниками, без своего build.
 
-- **Web НЕ импортирует `@repo/database`** — весь доступ к данным только по HTTP через RTK Query (`@/shared/api/baseApi`).
-- **API НЕ импортирует код из web** — shared пакеты являются общим слоем (типы, Zod, калькулятор, моки).
-- Vite dev-сервер проксирует `/api → http://localhost:4000` (см. `apps/web/vite.config.ts`).
-
-### FSD-структура `apps/web/src`
-
-```
-app/          точка входа (main.tsx), router.tsx, store/, providers/, styles/ (дизайн-система)
-pages/        home/ menu/ menu-item/ booking/ checkout/ tma/ — композиция виджетов и фичей
-widgets/      app-header/ app-footer/ hero-showcase/ menu-item-viewer/ — крупные самодостаточные блоки
-features/     cart/ book-table/ menu-customizer/ coffee-builder/ — пользовательские сценарии
-entities/     menu-item/ table/ order/ — бизнес-сущности (RTK Query API + UI)
-shared/       api/ lib/ ui/ config/ — инфраструктура, не зависящая от бизнеса
+```text
+apps/web    Vite 6 + React 19 + react-router 7 + Tailwind 4 + RTK, FSD, порт 5173
+apps/api    Hono 4, порт 4000, basePath /api — единственный доступ к Prisma и Redis
+apps/bot    grammY, до фазы 5
+packages/   shared, database, typescript-config (base / react / node)
 ```
 
-**Дизайн-система** — в `app/styles/index.css` (Tailwind 4 `@theme`): палитра «вечерний эспрессо-бар» (ink-900…500, gold, cream, mint, rose-warm в OKLCH), шрифты Playfair Display + Manrope, зернистая текстура, компонентные классы `.btn`/`.card`/`.chip`/`.nav-pill`/`.eyebrow`/`.field-input`, анимации `--animate-cp-in` и `--animate-float`. Hero-фото — виджет `hero-showcase` + класс `.hero-center-photo`.
+Vite проксирует `/api` → `http://localhost:4000`.
 
-**Фото напитков** — `public/drinks/*.jpg` + маппинг `shared/lib/drink-image.ts` (по slug и по id; fallback — `LayerStackSvg`).
+### FSD (`apps/web/src`)
 
-**Правила FSD:**
+- `app/` — вход, роутер, store, стили.
+- `pages/` — home, menu, menu-item, booking, checkout, tma, staff.
+- `widgets/` — app-header, app-footer, hero-showcase, menu-item-viewer, hall-map.
+- `features/` — cart, book-table, menu-customizer, coffee-builder, staff-auth.
+- `entities/` — menu-item, table, order.
+- `shared/` — api, lib, ui. Папки `config` нет.
 
-- Иерархия слоёв: `app > pages > widgets > features > entities > shared`. Импорты разрешены **только вниз** (слой выше может импортировать слой ниже, но не наоборот и не «вбок» на своём уровне — исключение: cross-import entities через публичное API).
-- Внутри слайса — сегменты: `api/` (RTK Query эндпоинты), `model/` (Redux-слайсы, типы), `ui/` (компоненты), `lib/` (утилиты), `index.ts` (публичный API слайса).
-- Импортировать слайс только через его `index.ts`; внутренние пути наружу не экспортируются.
-- Алиас `@/` → `apps/web/src/` (vite + tsconfig paths).
-- Слайсы фичей типизируют стейт через `import type { RootState } from "@/app/store"` — это намеренная type-only цикличность, рантайм-цикла нет.
-- RTK Query API живут в entities (`entities/menu-item/api/menuApi.ts` и т.д.) и регистрируются в `app/store/index.ts` явными импортами (`import "@/entities/menu-item"`).
+Алиас `@/` → `apps/web/src/`. `import type { RootState }` из `@/app/store` допустим только как type-only. RTK Query живёт в `entities/*/api` и подключается в `app/store/index.ts` явным импортом сущности.
 
-### API-роуты `apps/api`
+Стили: `app/styles/index.css`, Tailwind 4 `@theme`. Палитра ink / gold / cream / mint / rose-warm, шрифты Playfair Display и Manrope. Классы `.btn`, `.card`, `.chip`, `.nav-pill`, `.eyebrow`, `.field-input`. Фото напитков: `public/drinks/*.jpg`, маппинг `shared/lib/drink-image.ts`.
 
-| Метод и путь (basePath `/api`) | Назначение                                                             |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| `GET /health`                  | healthcheck                                                            |
-| `GET /menu`                    | меню из БД, фолбэк на MOCK при отсутствии `.env`                       |
-| `GET /tables?date&slot`        | статусы столов на слот (FREE/HELD/OCCUPIED + Redis-локи)               |
-| `POST /tables/hold`            | холд стола на 10 минут + broadcast в Supabase Realtime                 |
-| `DELETE /tables/hold`          | снять холд (только свой)                                               |
-| `POST /orders`                 | создать заказ; цена пересчитывается на сервере, клиентской не доверяем |
-| `GET /orders?id=`              | статус заказа                                                          |
-| `PATCH /orders/:id/trigger`    | триггер «Готовить сейчас»                                              |
+## API (`/api`)
 
-- Идентификация гостя: заголовок `x-guest-id` (генерируется в `web/shared/lib/guest-id.ts`); гостевой пользователь в БД — `guest@tactile.local`.
-- Порт берётся из `PORT` env (по умолчанию 4000).
-- Без заполненного `.env` API работает в мок-режиме: `/menu` и `/tables` отдают моки, заказы и холды возвращают 503 (нет БД/Redis).
+| Метод и путь | Назначение |
+| --- | --- |
+| `GET /health` | healthcheck |
+| `GET /menu` | меню из БД; мок, если нет `.env` или сбой БД |
+| `GET /tables?date&slot` | `FREE` / `HELD` / `BOOKED` и Redis-локи |
+| `POST /tables/hold` | лок на 10 минут, `Booking(HELD)`, `bookingId`, broadcast |
+| `DELETE /tables/hold` | снять свой холд |
+| `POST /orders` | заказ, цена считается на сервере |
+| `GET /orders?id=` | статус заказа |
+| `PATCH /orders/:id/trigger` | «Готовить сейчас» |
+| `POST /auth/login` | email и пароль персонала → JWT |
+| `GET /auth/me` | текущий сотрудник по Bearer |
 
-## Команды (корень)
+Гость: заголовок `x-guest-id` (`apps/web/src/shared/lib/guest-id.ts`), пользователь в БД — `guest@tactile.local`. Секреты — корневой `.env` (шаблон `.env.example`): его читают API, Vite и `pnpm db:push`. Без `DATABASE_URL` меню и столы читаются из моков, а заказы, правки меню, смены, склад и сотрудники пишутся в `data/local-store.json` (файл в `.gitignore`). Если строка Supabase задана, эти фолбэки выключены: источник — Prisma, сбой базы — `503`.
 
-| Команда                      | Что делает                                  |
-| ---------------------------- | ------------------------------------------- |
-| `pnpm dev`                   | dev-серверы web (5173) и api (4000) (turbo) |
-| `pnpm build`                 | сборка                                      |
-| `pnpm lint` / `lint:fix`     | ESLint (flat config, `eslint.config.mjs`)   |
-| `pnpm format` / `format:fix` | Prettier check / write (`.prettierrc.json`) |
-| `pnpm typecheck`             | `tsc --noEmit` по всем пакетам через turbo  |
-| `pnpm ci:check`              | lint + typecheck + build                    |
-| `pnpm db:generate`           | генерация Prisma Client                     |
-| `pnpm db:push` / `db:seed`   | применить схему / наполнить БД              |
+Персонал: JWT на 7 дней, ключ `tactile.staff.token` в `localStorage`. `RequireStaff` закрывает `/staff/*`, кроме `/staff/login`. Вкладки: заказы и статусы, меню (цена и наличие), смены, выручка, уведомления, сотрудники, склад. Учётки сида — `.docs/memory-sprint-admin-shell.md`. Без базы те же учётки лежат в `data/local-store.json`.
 
-Проектные команды агента лежат в `.kimi-code/skills/`: `/формат` (полный цикл проверки кода), `/заключение` (отчёт сессии в `.docs/history/YYYY-MM-DD_coffee-summary.md`).
+| Метод и путь | Назначение |
+| --- | --- |
+| `GET /staff/orders`, `PATCH /staff/orders/:id` | очередь и статус |
+| `GET /staff/menu`, `PATCH /staff/menu/:id` | цена, название, наличие |
+| `GET /staff/revenue?date=` | суммы за день |
+| `GET /staff/shifts`, `POST /staff/shifts` | открыть и закрыть смену |
+| `GET /staff/stock`, `PATCH /staff/stock/:id` | остатки выпечки |
+| `GET /staff/notifications` | готовые заказы, низкий остаток, смена |
+| `GET /staff/employees`, `POST /staff/employees` | список и новая учётка |
 
-## Ключевые контракты
+## Контракты
 
-- **Единый источник правды для цены/КБЖУ** — `packages/shared/src/utils/price-calculator.ts`: `calculateItemTotals(item, activeLayerIds)`. Используется API (серверный пересчёт при создании заказа), фронтом (customizer) и ботом. Правила: `unitPrice = basePrice + Σ priceModifier активных слоёв`; удаление базового слоя не уменьшает цену; `baseCalories` блюда = надбавка поверх слоёв (в моках = 0, вся КБЖУ в слоях).
-- **Слепок кастомизации** — `CustomConfiguration { activeLayerIds, removedTitles, addedTitles }` хранится в `OrderItem.customConfiguration` (JSON).
-- **3D-конфиг слоя** — тип `MenuItemLayerConfig` в `packages/shared/src/types/three-menu.types.ts`: `basePositionY` (собрано), `explodeOffsetY` (разлёт), `heightScale`/`radiusScale` (процедурный примитив), `labelPosition` (выноска `<Html>`), материал (`colorHex`, `opacity`, `roughness`). Там же `MenuResponse` (контракт ответа API).
-- **Fallback-рендер**: если `MenuItem.modelUrl === null` — слои рендерятся примитивами (`primitiveType`: CYLINDER/BOX/SPHERE/TORUS), .glb не нужны.
-- **Локи столов** — `packages/database/src/redis.ts`: `lockTable/unlockTable/getTableLocks`, ключ `lock:table:{tableId}:{slotStartIso}`, TTL 600 сек; снять чужой лок нельзя (проверка `userId`). Слот брони — 90 минут.
-- **Realtime-пейлоады и конфиг столов** — типы в `packages/shared/src/types/realtime.types.ts` (`TableStatusPayload`, `OrderStatusRealtimePayload`, `TableSlotStatus`, `HoldTableResponse`, `CafeTableConfig`, `TABLE_ZONES`). Подписка на канал `cafe-tables` — в `bookingApi.onCacheEntryAdded` (`entities/table`).
-- **Типы ответов API** — `packages/shared/src/types/api.types.ts`: `CreateOrderResponse`, `OrderStatusResponse`, `ApiErrorResponse`.
-- **Валидация** — Zod-схемы в `packages/shared/src/schemas/` (бронь, заказ, адрес + полигон доставки `isPointInDeliveryZone`). Одни и те же схемы на фронте, в API и в боте.
-- **Мапперы БД → shared** — `packages/database/src/mappers.ts`: Decimal→Number, JSON→типизированные кортежи (с runtime-гардами). API возвращает только shared-типы, никаких Prisma-объектов наружу.
+- Калькулятор: `packages/shared/src/utils/price-calculator.ts`. `unitPrice = basePrice + Σ priceModifier` активных слоёв. Снятие базового слоя цену не уменьшает. `baseCalories` — надбавка поверх слоёв (в моках `0`).
+- Слепок заказа: `CustomConfiguration { activeLayerIds, removedTitles, addedTitles }` в `OrderItem.customConfiguration`.
+- Локи: `packages/database/src/redis.ts`. Чужой лок снять нельзя (проверка `userId`). Слот брони — 120 минут (`BOOKING_SLOT_MINUTES`): 16:00 занимает стол до 18:00.
+- Checkout: корзина хранит `bookingId`. Тип «В кафе» (`DINE_IN`) доступен только вместе с ним.
+- Realtime-типы: `packages/shared/src/types/realtime.types.ts`. Подписка — `bookingApi.onCacheEntryAdded` в `entities/table`.
+- Zod: `packages/shared/src/schemas/`. Одни схемы на web, API и боте. Статусы — константы shared, не строковые литералы.
+- Мапперы: `packages/database/src/mappers.ts` (`Decimal` → `number`). Наружу только shared-типы.
+- Supabase: канон `SUPABASE_URL` / `SUPABASE_ANON_KEY`. Web — `VITE_SUPABASE_*`. API читает `SUPABASE_*`, затем `VITE_*`, затем `NEXT_PUBLIC_*`.
 
-## База данных
+## Команды
 
-Схема: `packages/database/prisma/schema.prisma` — 8 моделей (`User`, `Address`, `Category`, `MenuItem`, `MenuItemLayer`, `CafeTable`, `Booking`, `Order`, `OrderItem`), 6 enum'ов. `User.telegramId` — BigInt (в `client.ts` патч `BigInt.prototype.toJSON`). Seed: `packages/database/seed.ts` (идемпотентный, берёт меню из `@repo/shared` моков).
+| Команда | Что делает |
+| --- | --- |
+| `pnpm dev` | web `:5173` и api `:4000` |
+| `pnpm build` / `build:web` | сборка всего монорепо / только web |
+| `pnpm lint` / `lint:fix` | ESLint |
+| `pnpm format` / `format:fix` | Prettier |
+| `pnpm typecheck` | `tsc --noEmit` через turbo |
+| `pnpm ci:check` | lint + typecheck + build |
+| `pnpm db:generate` / `db:push` / `db:seed` / `db:status` | Prisma Client / схема в Supabase / сид / проверка счётчиков |
 
-Seed берёт меню из моков `@repo/shared`. Деплой web на Vercel — `vercel.json` + `.docs/deploy-vercel.md` (API — отдельный хост).
+Скиллы агента: `.cursor/skills/` — `/формат`, `/заключение`. Чек-лист ревью — `REVIEW.md`.
 
-## Окружение
+## Roadmap
 
-Шаблон — `.env.example`: `DATABASE_URL`/`DIRECT_URL`, `VITE_SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`, `UPSTASH_REDIS_REST_*`, `BOT_TOKEN`, `WEBAPP_URL`. Postinstall Prisma/esbuild — `onlyBuiltDependencies` в `pnpm-workspace.yaml`.
+- [x] Фазы 1–3.5 — монорепо, Vite и FSD, страница блюда, тёмная тема, Coffee Builder. R3F снят.
+- [x] Фаза 4 — 2D-карта зала, `Booking(HELD)`, `DINE_IN`, единые Supabase env. Бриф: `.docs/memory-sprint-phase-4.md`.
+- [x] Админка, срез 1 — вход персонала и вкладки-заглушки. Спека: `docs/superpowers/specs/2026-11-11-staff-auth-shell-design.md`.
+- [x] Админка, срез 2 — заказы, меню, смены, склад, выручка, уведомления, сотрудники.
+- [ ] Фаза 5 — Telegram-бот: имя и телефон, доставка (бесплатно от 30), триггер бариста, трекинг статуса.
 
-Supabase Realtime: канон `SUPABASE_URL` / `SUPABASE_ANON_KEY`; web — `VITE_SUPABASE_*` (те же значения); API читает `SUPABASE_*` → `VITE_*` → `NEXT_PUBLIC_*` (legacy).
+Открытые правки интерфейса (hero, надпись «деморежим», форма брони) — `.docs/backlog/README.md`.
 
-## Правила разработки и работы агентов
+## STOP
 
-### 1. Правила кода
-
-- **Строгий TypeScript**: Без `any` без крайней нужды. Используйте `unknown` + Zod.
-- **Валидация**: Все внешние данные (API, БД, формы) валидируются Zod-схемами из `packages/shared`.
-- **Статусы**: Только константы из `shared`, никаких строковых литералов (magic strings).
-- **База данных**: Каждый запрос к БД ограничен `workspace_id` (RLS + явный фильтр в коде).
-- **Секреты**: Только в `.env`. В репозитории — `.env.example` с пустыми значениями. Web env — только `VITE_*`.
-- **FSD Архитектура**: Импорты строго вниз (`app > pages > widgets > features > entities > shared`). Публичный API слайса — только через `index.ts`. Бизнес-логика не должна утекать в `apps/*` — только в `packages/shared`.
-
-### 2. Правила работы агентов (Workflow)
-
-- **Stop & Check**: Если запрос нарушает правила (например, `localStorage` в UI, `any`, импорт БД в web), **сразу скажи об этом** до написания кода.
-- **План без ожидания**: Кратко опиши план (файлы + правила) и сразу реализуй. Задавай вопросы только если без ответа нельзя выбрать поведение.
-- **Дебаг**: Ошибка → скилл `systematic-debugging` (сначала найти причину, потом патчить).
-- **TDD**: Код в `packages/*` → скилл `tdd-packages` (тест первым). UI проверяется в браузере.
-- **STOP**: Остановись и спроси, если нужно выбрать между конфликтными архитектурными решениями, требуется destructive git (`push --force`, `hard reset`) или коммит секретов.
-- **Коммиты**: Только по явной просьбе. Формат — Conventional Commits. Без `Co-authored-by: Cursor`.
-
-### 3. Definition of Done (DoD) — Обязательно перед сдачей
-
-Перед финальным ответом пользователю агент **обязан** запустить проверки и исправить все ошибки:
-
-1. `pnpm ci:check` (включает `lint`, `typecheck`, `format`) — должен быть зелёным.
-2. При правках `packages/*` — дополнительно `pnpm test`.
-3. Если менялась схема БД: `pnpm db:types` и проверка типов.
-   _Не отдавай код с ошибками в надежде, что «потом починят»._
-
-### 4. Изменения схемы БД
-
-- `supabase migration new <name>` — существующие миграции не править.
-- RLS настраивается в той же миграции.
-- `pnpm db:types` для обновления типов.
-- Статусы/поля синхронно обновляются в Zod-схемах `shared`.
-
-### 5. Скиллы и субагенты (.cursor/)
-
-**Скиллы (.cursor/skills/):**
-
-- `/формат` → `format:fix` → `lint:fix` → `typecheck` до зелёного.
-- `/заключение` → отчёт в `.docs/history/` + обновление `STRUCTURE.md`.
-- `systematic-debugging`, `verification-before-completion`, `receiving-code-review`, `dispatching-parallel-agents`, `tdd-packages`.
-
-**Субагенты (.cursor/agents/):**
-
-- `arch-reviewer` — read-only ревью FSD / границ пакетов / Zod / `workspace_id` и сверка `AGENTS.md` + `STRUCTURE.md` + `README` + `ROADMAP` с кодом. **Чек-лист ревью — в `REVIEW.md`**.
-
-### 6. Рабочий процесс (Спринты)
-
-- Перед спринтом читай `.docs/HANDOFF.md` (если новая машина) и бриф текущего спринта.
-- Следующий незакрытый спринт в `ROADMAP.md` — приоритет.
-- После спринта: `[x]` в `ROADMAP` + обновить «Текущее состояние» в `.docs/PROJECT-MEMORY.md`; новый бриф — в `.docs/memory-sprint-X.Y.md`.
-- Один логический спринт = один коммит (или PR).
-
-## Правила Кода
-
-Ни одна задача не считается выполненной, пока код не проходит все проверки. Агент **обязан** самостоятельно запустить их в терминале перед тем, как отдать результат пользователю.
-
-**Обязательный чек-лист перед сдачей задачи:**
-
-Строгий TypeScript (strict: true), без any без крайней нужды.
-Все внешние данные (формы, API, вебхуки, конфиги принтеров, пейлоады из парсеров) валидируются Zod-схемами из packages/shared.
-Статусы заказов/принтеров/материалов — только из констант shared, строки-литералы в коде запрещены.
-Мультитенантность: каждый запрос к БД обязан быть ограничен workspace_id (на уровне RLS + явного фильтра).
-Секреты — только через .env, коммитить .env.example с пустыми значениями.
-
-## Roadmap и статус
-
-- [x] **Фаза 1** — монорепо, Prisma-схема, shared-типы/Zod/моки, ESLint+Prettier, скелеты apps. Валидация пройдена: `prisma generate`, `typecheck`, `lint`, `format` — зелёные (03.11.2026)
-- [x] **Фаза 2** — переход web на Vite + React 19 + react-router 7 по FSD; API вынесен в `apps/api` (Hono); Redux Toolkit + RTK Query: `menuApi`, `bookingApi` (Realtime в `onCacheEntryAdded`), `orderApi`, слайсы `cart`/`customizer`/`scene3d`; страницы menu/booking/checkout/tma. Валидация пройдена: `typecheck` 5/5, `lint` 0 ошибок, `format` чисто, `vite build` успешен, smoke API (health/menu/tables) и Vite-прокси — OK (03.11.2026)
-- [x] **Фаза 3** — страница блюда: полномасштабное фото + «указатели» слоёв (название, граммовка, ккал) с реактивным пересчётом цены/КБЖУ (03.11.2026)
-- [x] **Фаза 3.5** — тёмная тема, лендинг (hero + Current Pick), Coffee Builder (`custom_coffee`). R3F/3D UI и `scene-3d`/`hero-3d` удалены; страница блюда — фото + состав. Валидация: typecheck/lint/build OK (03.11.2026; чистка 10.11.2026)
-- [x] **Фаза 4** — 2D-карта зала (окна/дверь/WC/бар/столы), Booking(HELD) при холде, DINE_IN в checkout по `bookingId`, унификация Supabase env (11.11.2026)
-- [ ] **Фаза 5** — Telegram-бот grammY: Платная доставка(бесплатно от 30р) авторизация(Варианты: 1. Имя и телефон с телеграмма. 2. Пользователь вводит имя, телефон, после чего выпадающее меню - app приложение с картинками товара, выбор доставки, и дату/время), доставка, триггер бариста за 15 минут, live-трекинг статуса.
-
-## Переделать (статус → `.docs/memory-sprint-polish.md`)
-
-1. Главная страница фоновая картинка слишком растянуюта. из за чего качество ужастное, сделай меньше.
-2. Страница меню - убери надпись деморежим. В первую очередь данные должны идти из бд
-3. ![alt text](image.png) - при выборе места появляется белый квадрат - исправь.Так же не бронируется место, должна быть форма
-   с вводом номера телефона , имени и выбором времени.А там где надпись бронирование и ниже календарь - нужно при выборе показывать,
-   какие места свободны/заняты. обычно бронирование идет на 2 часа следовательно если я выберу на 16.00 то к 18.00 должно показывать что место свободно
-   Сделай для этого моковые данные.
+Остановись и спроси, если без ответа нельзя выбрать поведение, нужен `push --force` или `reset --hard`, либо в коммит попадают секреты.

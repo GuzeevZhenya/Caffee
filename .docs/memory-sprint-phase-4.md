@@ -21,6 +21,7 @@ PRD: `docs/prd/phase-4-hall-booking.md`
 ## Осталось (вне фазы / дальше)
 
 - Фаза 5 — Telegram-бот
-- п.5 — админ-панель
+- CRUD админки. Срез 1 (вход и заглушки) уже есть: `.docs/memory-sprint-admin-shell.md`
 - Деплой Vercel + production БД/Redis
 - Опционально: JPG-варианты тирамису; таймер холда `TableHoldTimer`
+- Правки интерфейса после аудита — `.docs/backlog/README.md`

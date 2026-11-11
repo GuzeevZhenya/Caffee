@@ -10,6 +10,7 @@ import "@/entities/menu-item";
 import "@/entities/order";
 import "@/entities/table";
 import "@/features/staff-auth/api/authApi";
+import "@/features/staff-board";
 
 /** Фабрика стора (создаётся один раз на клиенте в StoreProvider) */
 export function makeStore() {

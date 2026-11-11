@@ -1,6 +1,6 @@
 # STRUCTURE.md — карта файлов проекта
 
-> Состояние на 10.11.2026. Подробный контекст агентов — в `AGENTS.md`. Деплой — `.docs/deploy-vercel.md`.
+> Состояние на 11.11.2026. Контекст агента — `AGENTS.md`. Продукт — `PROJECT_SPEC.md`. Деплой — `.docs/deploy-vercel.md`.
 
 ## Корень
 
@@ -12,9 +12,10 @@
 | `vercel.json`                            | Деплой SPA `@repo/web` на Vercel                                                    |
 | `eslint.config.mjs` / `.prettierrc.json` | Lint / format                                                                       |
 | `.env.example`                           | Шаблон env (БД, Supabase, Redis, бот)                                               |
-| `AGENTS.md`                              | Архитектура, контракты, roadmap                                                     |
-| `REVIEW.md`                              | Чек-лист для код-ревью и субагента arch-reviewer                                    |
-| `STRUCTURE.md`                           | Карта файлов проекта (этот файл)                                                    |
+| `AGENTS.md`                              | Правила агента, контракты, roadmap                                                  |
+| `PROJECT_SPEC.md`                        | Короткий снимок продукта и стека                                                    |
+| `REVIEW.md`                              | Чек-лист код-ревью                                                                  |
+| `STRUCTURE.md`                           | Карта файлов (этот файл)                                                            |
 | `.docs/`                                 | Memory спринта, backlog, история, deploy-заметки                                    |
 
 ## apps/
@@ -30,9 +31,9 @@
 | Путь                                                                                | Назначение                                               |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------- |
 | `app/main.tsx`, `router.tsx`, `store/`, `styles/`                                   | Вход, маршруты, Redux, дизайн-система                    |
-| `pages/home\|menu\|menu-item\|booking\|checkout\|tma`                               | Страницы                                                 |
-| `widgets/hero-showcase`, `menu-item-viewer`, `hall-map`, `app-header`, `app-footer` | Крупные блоки                                            |
-| `features/cart`, `book-table`, `menu-customizer`, `coffee-builder`                  | Сценарии                                                 |
+| `pages/home\|menu\|menu-item\|booking\|checkout\|tma\|staff`                        | Страницы; staff — логин и заглушки вкладок               |
+| `widgets/hero-showcase`, `menu-item-viewer`, `hall-map`, `app-header`, `app-footer` | Крупные блоки; карта зала — SVG                          |
+| `features/cart`, `book-table`, `menu-customizer`, `coffee-builder`, `staff-auth`    | Сценарии; `RequireStaff` на `/staff/*`                   |
 | `entities/menu-item`                                                                | `menuApi`, `MenuItemCard`, `DrinkPhoto`, `LayerStackSvg` |
 | `entities/table`, `entities/order`                                                  | Бронь / заказы (RTK Query)                               |
 | `shared/api/baseApi.ts`                                                             | `baseUrl: /api`, `x-guest-id`                            |
@@ -46,8 +47,10 @@
 | ---------------------- | ------------------------------------------------------------- |
 | `src/index.ts`         | Hono app, cors, logger, `/health`                             |
 | `src/routes/menu.ts`   | `GET /menu` (+ мок при сбое БД)                               |
-| `src/routes/tables.ts` | статусы / hold / unlock                                       |
+| `src/routes/tables.ts` | статусы / hold / unlock, слот 120 минут                      |
 | `src/routes/orders.ts` | create / status / trigger                                     |
+| `src/routes/auth.ts`   | `POST /auth/login`, `GET /auth/me`                            |
+| `src/lib/staff-auth.ts` | JWT персонала, bcrypt                                        |
 | `src/lib/broadcast.ts` | Supabase Realtime (`SUPABASE_*` → `VITE_*` → `NEXT_PUBLIC_*`) |
 
 ## packages/

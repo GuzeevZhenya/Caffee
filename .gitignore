@@ -27,3 +27,7 @@ Thumbs.db
 # Local tooling / image backups
 tmp-vignette/
 apps/web/public/drinks/_orig/
+
+# Локальная база, когда нет DATABASE_URL
+data/local-store.json
+data/local-store.json.tmp

@@ -9,4 +9,5 @@ export {
 } from "./model/staffAuthSlice";
 export { authApi, useLazyMeQuery, useLoginMutation, useMeQuery } from "./api/authApi";
 export { RequireStaff } from "./ui/RequireStaff";
+export { StaffRoleGate } from "./ui/StaffRoleGate";
 export { staffHomePath, staffNavForRole, type StaffNavItem } from "./lib/staff-nav";

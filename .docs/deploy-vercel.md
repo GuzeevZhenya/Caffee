@@ -46,4 +46,4 @@
 1. Подключить репозиторий к Vercel, Root Directory = `.` (корень монорепо).
 2. Framework Preset: Other; команды возьмутся из `vercel.json`.
 3. Добавить `VITE_SUPABASE_*` при необходимости.
-4. Deploy → открыть URL, проверить `/`, `/menu`, `/menu/:id`, `/booking`, `/checkout`.
+4. Deploy → открыть URL, проверить `/`, `/menu`, `/menu/:id`, `/booking`, `/checkout`, `/staff/login`.

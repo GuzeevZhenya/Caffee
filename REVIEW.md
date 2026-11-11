@@ -1,24 +1,24 @@
-# REVIEW.md — Чек-лист код-ревью
+# REVIEW.md — чек-лист код-ревью
 
-> Загружать на код-ревью (или вместе с субагентом `arch-reviewer`).
+Открывать на ревью. Сверка с `AGENTS.md` и `STRUCTURE.md`.
 
 ## Чек-лист
 
-- [ ] Title PR — Conventional Commits
-- [ ] `pnpm ci:check` зелёный; при правках `packages/*` — `pnpm test`
-- [ ] Нет секретов в diff (`.env`, ключи, токены)
-- [ ] FSD: импорты только вниз, public API через `index.ts`
-- [ ] Бизнес-логика не утекла в `apps/*` — только `packages/shared`
-- [ ] Внешние данные валидируются Zod из `shared`
-- [ ] Статусы — константы `shared`, не литералы
-- [ ] Запросы к БД с `workspace_id` / RLS (если применимо)
-- [ ] Web env — только `VITE_*`
-- [ ] Миграции: новые файлы, существующие не правились
-- [ ] `ROADMAP` / `AGENTS` / `STRUCTURE` обновлены, если спринт закрыт
-- [ ] Нет `any` (используйте `unknown` + Zod)
+- [ ] Заголовок в стиле Conventional Commits, описание по-русски, без `Co-authored-by`
+- [ ] `pnpm ci:check` зелёный (`lint` + `typecheck` + `build`)
+- [ ] В diff нет секретов (`.env`, ключи, токены)
+- [ ] `apps/web` не импортирует `@repo/database`; данные идут через RTK Query
+- [ ] FSD: импорты только вниз, наружу слайса — только `index.ts`
+- [ ] Расчёт цены и КБЖУ не скопирован мимо `calculateItemTotals`
+- [ ] Внешние данные валидируются Zod из `packages/shared`
+- [ ] Статусы — константы shared, не новые строковые литералы
+- [ ] В браузер уходят только `VITE_*`
+- [ ] Правка `schema.prisma` сопровождается `pnpm db:generate` и маппером, если поле уходит на клиент
+- [ ] Закрытый спринт отражён в `AGENTS.md` или в `.docs/memory-sprint-*.md`
+- [ ] Нет `any` без причины (`unknown` + Zod)
 
-## Что пропускать при ревью
+## Не разбирать в ревью
 
 - `pnpm-lock.yaml`
-- Сгенерированные типы (например, `database.types.ts`)
+- Сгенерированный Prisma Client
 - `*.log`, кэш `.turbo`

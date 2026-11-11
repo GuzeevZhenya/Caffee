@@ -17,6 +17,7 @@
     "db:generate": "turbo run db:generate",
     "db:push": "turbo run db:push",
     "db:seed": "turbo run db:seed",
+    "db:status": "turbo run db:status",
     "db:studio": "turbo run db:studio"
   },
   "devDependencies": {

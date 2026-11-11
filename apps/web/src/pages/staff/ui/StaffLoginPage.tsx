@@ -6,9 +6,21 @@ import {
   staffHomePath,
   useLoginMutation,
 } from "@/features/staff-auth";
-import { safeOrderErrorMessage } from "@/shared/lib";
+import type { ApiErrorResponse } from "@repo/shared";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate } from "react-router";
+
+function staffLoginError(error: unknown): string {
+  if (typeof error === "object" && error !== null && "data" in error) {
+    const data = (error as { data?: ApiErrorResponse }).data;
+    if (data?.error === "invalid_credentials") return "Неверный email или пароль.";
+    if (data?.error === "auth_unavailable") {
+      return "База персонала недоступна. Заполните DATABASE_URL и выполните pnpm db:seed.";
+    }
+    if (data?.error === "invalid_body") return "Проверьте email и пароль (минимум 6 символов).";
+  }
+  return "Не удалось войти. Проверьте, что запущен API.";
+}
 
 /** `/staff/login` — email + пароль персонала */
 export function StaffLoginPage() {
@@ -68,7 +80,7 @@ export function StaffLoginPage() {
         <button type="submit" disabled={isLoading} className="btn btn-primary w-full">
           {isLoading ? "Вхожу…" : "Войти"}
         </button>
-        {error ? <p className="text-sm text-rose-warm">{safeOrderErrorMessage(error)}</p> : null}
+        {error ? <p className="text-sm text-rose-warm">{staffLoginError(error)}</p> : null}
       </form>
 
       <Link to="/" className="text-sm text-cream-dim underline-offset-2 hover:text-gold hover:underline">

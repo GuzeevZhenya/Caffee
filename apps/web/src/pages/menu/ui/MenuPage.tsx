@@ -6,7 +6,7 @@ import { Link } from "react-router";
 
 /** Витрина меню (дизайн mockup/menu.html): фильтры-чипы + карточки блюд */
 export function MenuPage() {
-  const { data, isLoading, isError } = useGetMenuQuery();
+  const { data, isLoading, isError, error } = useGetMenuQuery();
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
   const categories = [{ id: "all", name: "Всё" }, ...(data?.categories ?? [])];
@@ -20,11 +20,6 @@ export function MenuPage() {
           Каждая карточка ведёт на страницу блюда, где состав раскладывается по слоям с граммовкой
           и КБЖУ.
         </p>
-        {import.meta.env.DEV && data?.source === "mock" ? (
-          <p className="mt-4 rounded-m border border-gold-deep bg-ink-700 px-4 py-2 text-sm text-gold">
-            Демо-режим: показаны моковые данные.
-          </p>
-        ) : null}
         <div className="mt-6 flex flex-wrap gap-2" role="group" aria-label="Фильтр по категориям">
           {categories.map((category) => (
             <button
@@ -42,7 +37,7 @@ export function MenuPage() {
 
       {isLoading ? <p className="text-cream-dim">Загружаю меню…</p> : null}
       {isError || (!isLoading && !data) ? (
-        <p className="text-cream-dim">{safeLoadErrorMessage()}</p>
+        <p className="text-cream-dim">{safeLoadErrorMessage(error)}</p>
       ) : null}
 
       {data ? (

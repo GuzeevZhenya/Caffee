@@ -1,7 +1,10 @@
+import { demoStaffAllowed } from "../lib/demo-staff";
+import { appendLocalOrder, applyDemoMenu, findLocalOrder, patchLocalOrderTrigger } from "../lib/staff-board";
 import { prisma, toMenuItem3DConfig } from "@repo/database";
 import {
   calculateItemTotals,
   createOrderSchema,
+  MOCK_MENU_ITEMS,
   roundMoney,
   triggerCookingSchema,
   type CreateOrderInput,
@@ -62,6 +65,37 @@ function toStatusResponse(order: {
     status: order.status,
     isPaid: order.isPaid,
     updatedAt: order.updatedAt.toISOString(),
+  };
+}
+
+function saveLocalOrder(input: CreateOrderInput): CreateOrderResponse {
+  const configs = new Map(MOCK_MENU_ITEMS.map((item) => [item.id, applyDemoMenu(item)]));
+  const lines = buildOrderLines(input, configs);
+  const itemsTotal = roundMoney(lines.reduce((sum, line) => sum + line.totalPrice, 0));
+  const bonusDiscount = roundMoney(
+    Math.min(input.bonusSpent * BONUS_POINT_VALUE, itemsTotal * BONUS_MAX_REDEEM_PERCENT),
+  );
+  const finalTotal = roundMoney(itemsTotal - bonusDiscount);
+  const summary = input.items
+    .map((line) => {
+      const name = configs.get(line.menuItemId)?.name ?? line.menuItemId;
+      return `${name} × ${line.quantity}`;
+    })
+    .join(", ");
+  const order = appendLocalOrder({
+    type: input.type,
+    status: input.bookingId ? "COOKING_HOLD" : "PENDING",
+    itemsTotal,
+    finalTotal,
+    isPaid: false,
+    guestName: "Гость",
+    summary,
+  });
+  return {
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    finalTotal: order.finalTotal,
   };
 }
 
@@ -136,6 +170,16 @@ export const ordersRoutes = new Hono()
       if (error instanceof OrderValidationError) {
         return c.json({ error: "validation_failed", message: error.message }, 409);
       }
+      if (demoStaffAllowed()) {
+        try {
+          console.warn("[api/orders] БД недоступна, пишу заказ в data/local-store.json");
+          return c.json(saveLocalOrder(input), 201);
+        } catch (fallback) {
+          if (fallback instanceof OrderValidationError) {
+            return c.json({ error: "validation_failed", message: fallback.message }, 409);
+          }
+        }
+      }
       console.error("[api/orders] БД недоступна:", error instanceof Error ? error.message : error);
       return c.json({ error: "database_unavailable" }, 503);
     }
@@ -157,6 +201,19 @@ export const ordersRoutes = new Hono()
       }
       return c.json(toStatusResponse(order));
     } catch (error) {
+      if (demoStaffAllowed()) {
+        const order = findLocalOrder(orderId);
+        if (!order) return c.json({ error: "order_not_found" }, 404);
+        return c.json(
+          toStatusResponse({
+            id: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+            isPaid: order.isPaid,
+            updatedAt: new Date(order.updatedAt),
+          }),
+        );
+      }
       console.error("[api/orders] БД недоступна:", error instanceof Error ? error.message : error);
       return c.json({ error: "database_unavailable" }, 503);
     }
@@ -198,6 +255,22 @@ export const ordersRoutes = new Hono()
 
       return c.json(toStatusResponse(updated));
     } catch (error) {
+      if (demoStaffAllowed()) {
+        const updated = patchLocalOrderTrigger(orderId, startNow);
+        if (updated === "missing") return c.json({ error: "order_not_found" }, 404);
+        if (updated === "bad_status") {
+          return c.json({ error: "invalid_status", message: "Триггер недоступен для этого статуса" }, 409);
+        }
+        return c.json(
+          toStatusResponse({
+            id: updated.id,
+            orderNumber: updated.orderNumber,
+            status: updated.status,
+            isPaid: updated.isPaid,
+            updatedAt: new Date(updated.updatedAt),
+          }),
+        );
+      }
       console.error(
         "[api/orders/trigger] БД недоступна:",
         error instanceof Error ? error.message : error,

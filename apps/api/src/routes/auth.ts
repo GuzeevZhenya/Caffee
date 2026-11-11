@@ -1,3 +1,4 @@
+import { demoStaffAllowed, demoStaffByCredentials } from "../lib/demo-staff";
 import { resolveStaffUser, signStaffToken } from "../lib/staff-auth";
 import { prisma } from "@repo/database";
 import {
@@ -45,7 +46,19 @@ export const authRoutes = new Hono()
       };
       return c.json(response);
     } catch (error) {
-      console.error("[api/auth/login]", error instanceof Error ? error.message : error);
+      console.warn(
+        "[api/auth/login] БД недоступна:",
+        error instanceof Error ? error.message : error,
+      );
+      if (demoStaffAllowed()) {
+        const demo = demoStaffByCredentials(email, password);
+        if (!demo) return c.json({ error: "invalid_credentials" }, 401);
+        const response: LoginResponse = {
+          token: signStaffToken(demo),
+          user: demo,
+        };
+        return c.json(response);
+      }
       return c.json({ error: "auth_unavailable" }, 503);
     }
   })

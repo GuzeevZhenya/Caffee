@@ -1,7 +1,9 @@
 import type { ApiErrorResponse } from "@repo/shared";
 
 const GENERIC_ORDER_ERROR = "Не удалось оформить заказ. Попробуйте ещё раз.";
-const GENERIC_LOAD_ERROR = "Данные временно недоступны. Показали демо-версию.";
+const GENERIC_LOAD_ERROR = "Данные временно недоступны.";
+const DATABASE_LOAD_ERROR =
+  "База Supabase не отвечает. Проверьте строки подключения и выполните pnpm db:push и pnpm db:seed.";
 
 function isProd(): boolean {
   return import.meta.env.PROD;
@@ -25,7 +27,15 @@ export function safeOrderErrorMessage(error: unknown): string {
   return GENERIC_ORDER_ERROR;
 }
 
-/** Нейтральный текст, если даже клиентский фолбэк не сработал. */
-export function safeLoadErrorMessage(): string {
+function isDatabaseUnavailable(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("status" in error)) return false;
+  if ((error as { status?: unknown }).status !== 503) return false;
+  const data = (error as { data?: ApiErrorResponse }).data;
+  return data?.error === "database_unavailable" || data === undefined;
+}
+
+/** Нейтральный текст, если меню или столы не загрузились. */
+export function safeLoadErrorMessage(error?: unknown): string {
+  if (!isProd() && isDatabaseUnavailable(error)) return DATABASE_LOAD_ERROR;
   return isProd() ? GENERIC_LOAD_ERROR : "Не удалось загрузить данные. Проверьте, что запущен apps/api.";
 }

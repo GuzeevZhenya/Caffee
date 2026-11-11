@@ -7,7 +7,7 @@ import { PopularCard } from "./PopularCard";
  * Signature / Popular Picks: 4 карточки (чётное), на mobile — 2 колонки.
  */
 export function PopularSection() {
-  const { data, isLoading, isError } = useGetMenuQuery();
+  const { data, isLoading, isError, error } = useGetMenuQuery();
   const revealRef = useReveal<HTMLElement>();
 
   const photoItems = data ? data.items.filter((item) => drinkPhotoUrl(item) !== null) : [];
@@ -25,7 +25,7 @@ export function PopularSection() {
       </div>
       {showLoader ? <p className="mt-8 text-center text-cream-dim">Загружаю меню…</p> : null}
       {isError && !data ? (
-        <p className="mt-8 text-center text-cream-dim">{safeLoadErrorMessage()}</p>
+        <p className="mt-8 text-center text-cream-dim">{safeLoadErrorMessage(error)}</p>
       ) : null}
       {popularItems.length > 0 ? (
         <div className="mt-8 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-4">

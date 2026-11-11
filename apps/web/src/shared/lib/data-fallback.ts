@@ -1,4 +1,5 @@
 import {
+  isMockTableBooked,
   MOCK_CATEGORIES,
   MOCK_MENU_ITEMS,
   MOCK_TABLES,
@@ -17,8 +18,8 @@ export function mockMenuResponse(): MenuResponse {
 }
 
 /**
- * Клиентский фолбэк статусов столов: все FREE, без холдов.
- * Фильтры guestsCount / hasPowerOutlet совпадают с API.
+ * Клиентский фолбэк статусов столов, если /api/tables недоступен.
+ * Занятость — из мок-расписания на 2 часа. Фильтры совпадают с API.
  */
 export function mockTablesForSlot(query: TableSlotQuery): TableSlotStatus[] {
   return MOCK_TABLES.filter((table) => table.isActive)
@@ -26,7 +27,7 @@ export function mockTablesForSlot(query: TableSlotQuery): TableSlotStatus[] {
     .filter((table) => (query.hasPowerOutlet ? table.hasPowerOutlet : true))
     .map((table) => ({
       ...table,
-      status: "FREE" as const,
+      status: isMockTableBooked(table.number, query.slot) ? ("BOOKED" as const) : ("FREE" as const),
       heldUntil: null,
       heldByMe: false,
     }));

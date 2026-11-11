@@ -6,6 +6,12 @@ interface HallMapProps {
   tables: TableSlotStatus[];
   date: string;
   slot: string;
+  slotEnd: string;
+  guestName: string;
+  guestPhone: string;
+  canBook: boolean;
+  onMockBooked: (tableId: string) => void;
+  onBooked: () => void;
 }
 
 const { bounds } = HALL_LAYOUT;
@@ -51,7 +57,17 @@ function statusFill(status: TableSlotStatus["status"], heldByMe: boolean): strin
  * 2D-план зала: стены, окна, вход, WC, бар + кликабельные столы.
  * Координаты столов — из position3D (x/z).
  */
-export function HallMap({ tables, date, slot }: HallMapProps) {
+export function HallMap({
+  tables,
+  date,
+  slot,
+  slotEnd,
+  guestName,
+  guestPhone,
+  canBook,
+  onMockBooked,
+  onBooked,
+}: HallMapProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = useMemo(
@@ -73,6 +89,7 @@ export function HallMap({ tables, date, slot }: HallMapProps) {
             y={0}
             width={VIEW_W}
             height={VIEW_H}
+            fill="#1c1612"
             className="fill-ink-900/80"
             rx={0.15}
           />
@@ -88,8 +105,8 @@ export function HallMap({ tables, date, slot }: HallMapProps) {
                   y={y + fixture.depth / 2}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  className="fill-cream-dim"
-                  style={{ fontSize: 0.35 }}
+                  fill="#cbbba6"
+                  fontSize={0.35}
                 >
                   {fixture.label}
                 </text>
@@ -112,8 +129,9 @@ export function HallMap({ tables, date, slot }: HallMapProps) {
                     y={y + fixture.depth / 2}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="fill-cream"
-                    style={{ fontSize: 0.32, fontWeight: 600 }}
+                    fill="#f3eadf"
+                    fontSize={0.32}
+                    fontWeight={600}
                   >
                     {fixture.label}
                   </text>
@@ -145,8 +163,10 @@ export function HallMap({ tables, date, slot }: HallMapProps) {
                   y={cy}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  className="pointer-events-none fill-ink-900"
-                  style={{ fontSize: 0.36, fontWeight: 700 }}
+                  fill="#1c1612"
+                  fontSize={0.36}
+                  fontWeight={700}
+                  className="pointer-events-none"
                 >
                   {table.number}
                 </text>
@@ -185,10 +205,23 @@ export function HallMap({ tables, date, slot }: HallMapProps) {
                 {selected.hasPowerOutlet ? " · розетка" : ""}
               </p>
             </div>
-            <HoldTableButton table={selected} date={date} slot={slot} />
+            <p className="text-sm text-cream">
+              {slot}–{slotEnd}
+              {guestName.trim() ? ` · ${guestName.trim()}` : ""}
+            </p>
+            <HoldTableButton
+              table={selected}
+              date={date}
+              slot={slot}
+              guestName={guestName.trim()}
+              guestPhone={guestPhone.trim()}
+              canBook={canBook && selected.status === "FREE"}
+              onMockBooked={() => onMockBooked(selected.id)}
+              onBooked={onBooked}
+            />
             <p className="text-xs text-cream-dim">
-              Холд на 10 минут. После удержания стол привяжется к корзине — можно оформить заказ «в
-              кафе».
+              Бронь на 2 часа. Свободный стол удерживается на 10 минут и попадает в корзину для
+              заказа «в кафе».
             </p>
           </>
         ) : (

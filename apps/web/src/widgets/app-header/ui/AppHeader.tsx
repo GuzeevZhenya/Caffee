@@ -46,7 +46,7 @@ export function AppHeader() {
         </Link>
 
         {staffUser ? (
-          <nav className="ml-auto flex min-w-0 items-center gap-0.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden">
+          <nav className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-0.5 sm:gap-1">
             {staffNavForRole(staffUser.role).map((item) => (
               <NavLink key={item.to} to={item.to} className="nav-pill">
                 {item.label}

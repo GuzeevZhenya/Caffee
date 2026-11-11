@@ -1,11 +1,20 @@
 import { AppLayout } from "@/app/AppLayout";
-import { RequireStaff } from "@/features/staff-auth";
+import { RequireStaff, StaffRoleGate } from "@/features/staff-auth";
 import { BookingPage } from "@/pages/booking";
 import { CheckoutPage } from "@/pages/checkout";
 import { HomePage } from "@/pages/home";
 import { MenuPage } from "@/pages/menu";
 import { MenuItemPage } from "@/pages/menu-item";
-import { StaffLoginPage, StaffStubPage } from "@/pages/staff";
+import {
+  StaffEmployeesPage,
+  StaffLoginPage,
+  StaffMenuPage,
+  StaffNotificationsPage,
+  StaffOrdersPage,
+  StaffRevenuePage,
+  StaffShiftsPage,
+  StaffStockPage,
+} from "@/pages/staff";
 import { TmaPage } from "@/pages/tma";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router";
 
@@ -28,73 +37,65 @@ const router = createBrowserRouter([
           {
             path: "/staff/orders",
             element: (
-              <StaffStubPage
-                title="Заказы"
-                description="Список заказов смены — в следующем срезе."
-              />
+              <StaffRoleGate allow={["ADMIN", "BARISTA"]}>
+                <StaffOrdersPage />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/menu",
             element: (
-              <StaffStubPage
-                title="Меню"
-                description="Редактирование и архивация позиций — в следующем срезе."
-              />
+              <StaffRoleGate allow={["ADMIN"]}>
+                <StaffMenuPage />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/shifts",
             element: (
-              <StaffStubPage
-                title="Смены"
-                description="Календарь смен 10:00–23:00 — в следующем срезе."
-              />
+              <StaffRoleGate allow={["ADMIN"]}>
+                <StaffShiftsPage title="Смены" />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/shift",
             element: (
-              <StaffStubPage
-                title="Моя смена"
-                description="Принятие смены и продажи — в следующем срезе."
-              />
+              <StaffRoleGate allow={["BARISTA"]}>
+                <StaffShiftsPage title="Моя смена" />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/revenue",
             element: (
-              <StaffStubPage
-                title="Выручка"
-                description="Дневная выручка и метрики — в следующем срезе."
-              />
+              <StaffRoleGate allow={["ADMIN"]}>
+                <StaffRevenuePage />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/notifications",
             element: (
-              <StaffStubPage
-                title="Уведомления"
-                description="Алерты для персонала — в следующем срезе."
-              />
+              <StaffRoleGate allow={["ADMIN", "BARISTA"]}>
+                <StaffNotificationsPage />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/employees",
             element: (
-              <StaffStubPage
-                title="Сотрудники"
-                description="Аккаунты и роли — в следующем срезе."
-              />
+              <StaffRoleGate allow={["ADMIN"]}>
+                <StaffEmployeesPage />
+              </StaffRoleGate>
             ),
           },
           {
             path: "/staff/stock",
             element: (
-              <StaffStubPage
-                title="Склад"
-                description="Остатки выпечки и дозаказ — в следующем срезе."
-              />
+              <StaffRoleGate allow={["BARISTA"]}>
+                <StaffStockPage />
+              </StaffRoleGate>
             ),
           },
         ],

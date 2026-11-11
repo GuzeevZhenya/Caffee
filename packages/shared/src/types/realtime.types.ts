@@ -24,6 +24,22 @@ export const ORDER_STATUSES = [
 ] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: "Ожидает",
+  COOKING_HOLD: "Ждёт гостя",
+  COOKING: "Готовится",
+  READY: "Готов",
+  DELIVERING: "В пути",
+  COMPLETED: "Выдан",
+  CANCELLED: "Отменён",
+};
+
+export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
+  DINE_IN: "В зале",
+  TAKEAWAY: "С собой",
+  DELIVERY: "Доставка",
+};
+
 /** Статусы брони (зеркало enum BookingStatus в Prisma) */
 export const BOOKING_STATUSES = [
   "HELD",

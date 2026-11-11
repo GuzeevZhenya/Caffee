@@ -1,10 +1,7 @@
 import { useAppDispatch } from "@/app/store";
 import { useHoldTableMutation, useReleaseTableMutation } from "@/entities/table";
 import { attachBooking, detachBooking } from "@/features/cart";
-import type { TableSlotStatus } from "@repo/shared";
-
-/** Длительность слота брони по умолчанию (мин) — синхронизирована с apps/api */
-const SLOT_DURATION_MINUTES = 90;
+import { BOOKING_SLOT_MINUTES, type TableSlotStatus } from "@repo/shared";
 
 interface HoldTableButtonProps {
   table: TableSlotStatus;
@@ -12,13 +9,28 @@ interface HoldTableButtonProps {
   date: string;
   /** Время слота HH:mm */
   slot: string;
+  guestName: string;
+  guestPhone: string;
+  canBook: boolean;
+  /** API недоступен — страница помечает стол занятым локально */
+  onMockBooked?: () => void;
+  onBooked?: () => void;
 }
 
 /**
  * Кнопка бронирования столика: FREE → холд в Redis (10 мин),
  * свой холд → досрочное снятие. Успешный холд привязывается к корзине.
  */
-export function HoldTableButton({ table, date, slot }: HoldTableButtonProps) {
+export function HoldTableButton({
+  table,
+  date,
+  slot,
+  guestName,
+  guestPhone,
+  canBook,
+  onMockBooked,
+  onBooked,
+}: HoldTableButtonProps) {
   const dispatch = useAppDispatch();
   const [holdTable, { isLoading: isHolding }] = useHoldTableMutation();
   const [releaseTable, { isLoading: isReleasing }] = useReleaseTableMutation();
@@ -69,13 +81,15 @@ export function HoldTableButton({ table, date, slot }: HoldTableButtonProps) {
 
   const handleHold = async (): Promise<void> => {
     const startTime = new Date(`${date}T${slot}:00`);
-    const endTime = new Date(startTime.getTime() + SLOT_DURATION_MINUTES * 60_000);
+    const endTime = new Date(startTime.getTime() + BOOKING_SLOT_MINUTES * 60_000);
     try {
       const result = await holdTable({
         tableId: table.id,
         startTime,
         endTime,
         guestsCount: 2,
+        guestName,
+        guestPhone,
       }).unwrap();
       if (result.locked) {
         dispatch(
@@ -88,9 +102,14 @@ export function HoldTableButton({ table, date, slot }: HoldTableButtonProps) {
             bookingId: result.bookingId,
           }),
         );
+        onBooked?.();
       }
-    } catch {
-      // 409: стол перехватил другой гость — статусы обновятся refetch'ем
+    } catch (error) {
+      const status =
+        typeof error === "object" && error !== null && "status" in error ? error.status : undefined;
+      if (status === 503 || status === "FETCH_ERROR") {
+        onMockBooked?.();
+      }
     }
   };
 
@@ -98,10 +117,10 @@ export function HoldTableButton({ table, date, slot }: HoldTableButtonProps) {
     <button
       type="button"
       onClick={() => void handleHold()}
-      disabled={isHolding}
+      disabled={!canBook || isHolding}
       className={`${baseClass} bg-gold text-ink-900 hover:bg-cream disabled:opacity-50`}
     >
-      {isHolding ? "Бронирую…" : "Забронировать"}
+      {isHolding ? "Бронирую…" : canBook ? "Забронировать" : "Сначала имя и телефон"}
     </button>
   );
 }

@@ -54,9 +54,18 @@ function validateTimeSlot(data: { startTime: Date; endTime: Date }, ctx: z.Refin
   }
 }
 
-export const holdTableSchema = bookingBaseSchema.superRefine(validateTimeSlot);
+const guestPhoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\+?\d[\d\s()-]{6,18}$/, "Укажите телефон");
 
-export type HoldTableInput = z.infer<typeof holdTableSchema>;
+/** Имя и телефон в форме брони. Холд без них по-прежнему валиден. */
+export const bookingGuestSchema = z.object({
+  guestName: z.string().trim().min(2, "Укажите имя").max(80),
+  guestPhone: guestPhoneSchema,
+});
+
+export type BookingGuestInput = z.infer<typeof bookingGuestSchema>;
 
 /** Полное создание брони (после холда, с пожеланиями гостя) */
 export const createBookingSchema = bookingBaseSchema
@@ -65,6 +74,14 @@ export const createBookingSchema = bookingBaseSchema
   })
   .superRefine(validateTimeSlot);
 
+export const holdTableSchema = bookingBaseSchema
+  .extend({
+    guestName: z.string().trim().min(2).max(80).optional(),
+    guestPhone: guestPhoneSchema.optional(),
+  })
+  .superRefine(validateTimeSlot);
+
+export type HoldTableInput = z.infer<typeof holdTableSchema>;
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 /** Query-параметры GET /api/tables — статусы столов на выбранный слот */

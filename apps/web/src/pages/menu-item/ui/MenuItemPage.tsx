@@ -7,7 +7,7 @@ import { Link, useParams } from "react-router";
 /** Страница блюда: /menu/:itemId — фото + указатели слоёв сбоку */
 export function MenuItemPage() {
   const { itemId } = useParams<{ itemId: string }>();
-  const { data, isLoading, isError } = useGetMenuQuery();
+  const { data, isLoading, isError, error } = useGetMenuQuery();
 
   if (isLoading) {
     return (
@@ -19,7 +19,7 @@ export function MenuItemPage() {
   if (isError || !data) {
     return (
       <div className="wrap py-16">
-        <p className="text-cream-dim">{safeLoadErrorMessage()}</p>
+        <p className="text-cream-dim">{safeLoadErrorMessage(error)}</p>
       </div>
     );
   }
