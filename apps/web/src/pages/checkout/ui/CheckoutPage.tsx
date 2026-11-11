@@ -9,23 +9,11 @@ import {
   setOrderType,
   setQuantity,
 } from "@/features/cart";
-import { formatPrice } from "@/shared/lib";
-import type { ApiErrorResponse, CreateOrderInput } from "@repo/shared";
+import { formatPrice, safeOrderErrorMessage } from "@/shared/lib";
+import type { CreateOrderInput, OrderType } from "@repo/shared";
 import { Link } from "react-router";
 
-function errorMessage(error: unknown): string {
-  if (typeof error === "object" && error !== null && "data" in error) {
-    const data = (error as { data?: ApiErrorResponse }).data;
-    if (data?.message) return data.message;
-    if (data?.error === "database_unavailable") {
-      return "База данных недоступна — заполните .env и поднимите Supabase.";
-    }
-    if (data?.error) return data.error;
-  }
-  return "Не удалось создать заказ. Попробуйте ещё раз.";
-}
-
-/** Корзина и оформление заказа (дизайн mockup/checkout.html) */
+/** Корзина и оформление заказа */
 export function CheckoutPage() {
   const dispatch = useAppDispatch();
   const items = useAppSelector(selectCartItems);
@@ -34,14 +22,17 @@ export function CheckoutPage() {
   const orderType = useAppSelector(selectOrderType);
   const [createOrder, { data: created, isLoading, error }] = useCreateOrderMutation();
 
-  // TODO(Фаза 4): DINE_IN — после создания Booking в БД (сейчас только Redis-холд).
-  // TODO(Фаза 5): DELIVERY — после адресов и зон доставки.
-  const canSubmit = items.length > 0 && orderType === "TAKEAWAY" && !isLoading;
+  const canDineIn = Boolean(booking?.bookingId);
+  const canSubmit =
+    items.length > 0 &&
+    !isLoading &&
+    (orderType === "TAKEAWAY" || (orderType === "DINE_IN" && canDineIn));
 
   const handleSubmit = async (): Promise<void> => {
     const payload: CreateOrderInput = {
-      type: "TAKEAWAY",
+      type: orderType === "DINE_IN" && canDineIn ? "DINE_IN" : "TAKEAWAY",
       bonusSpent: 0,
+      bookingId: orderType === "DINE_IN" && booking?.bookingId ? booking.bookingId : undefined,
       items: items.map((line) => ({
         menuItemId: line.menuItemId,
         quantity: line.quantity,
@@ -56,11 +47,17 @@ export function CheckoutPage() {
     }
   };
 
+  const selectType = (type: OrderType): void => {
+    if (type === "DINE_IN" && !canDineIn) return;
+    if (type === "DELIVERY") return;
+    dispatch(setOrderType(type));
+  };
+
   if (created) {
     return (
       <div className="wrap flex flex-col gap-3 py-16">
         <p className="eyebrow">Готово</p>
-        <h1 className="section-title">Заказ создан 🎉</h1>
+        <h1 className="section-title">Заказ создан</h1>
         <p>
           Номер заказа: <span className="font-mono font-bold">#{created.orderNumber}</span>
         </p>
@@ -141,6 +138,11 @@ export function CheckoutPage() {
         <p className="rounded-m border border-mint/40 bg-mint/10 px-4 py-3 text-sm text-mint">
           Привязан столик: {booking.tableTitle} ·{" "}
           {new Date(booking.slotStart).toLocaleString("ru-RU")}
+          {booking.bookingId ? null : (
+            <span className="mt-1 block text-cream-dim">
+              Холд только в Redis — для заказа «в кафе» нужна доступная БД (Booking id).
+            </span>
+          )}
         </p>
       ) : null}
 
@@ -149,7 +151,7 @@ export function CheckoutPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => dispatch(setOrderType("TAKEAWAY"))}
+            onClick={() => selectType("TAKEAWAY")}
             className="chip"
             aria-pressed={orderType === "TAKEAWAY"}
           >
@@ -157,11 +159,17 @@ export function CheckoutPage() {
           </button>
           <button
             type="button"
-            disabled
-            title="Фаза 4: станет доступно после создания брони в БД (сейчас столик держит Redis-холд)"
-            className="chip cursor-not-allowed opacity-40"
+            onClick={() => selectType("DINE_IN")}
+            disabled={!canDineIn}
+            title={
+              canDineIn
+                ? "Предзаказ к забронированному столику"
+                : "Сначала удержите столик на странице «Столы» (нужен Booking в БД)"
+            }
+            className={`chip ${canDineIn ? "" : "cursor-not-allowed opacity-40"}`}
+            aria-pressed={orderType === "DINE_IN"}
           >
-            В кафе (Фаза 4)
+            В кафе
           </button>
           <button
             type="button"
@@ -186,7 +194,7 @@ export function CheckoutPage() {
         </button>
       </div>
 
-      {error ? <p className="text-sm text-rose-warm">{errorMessage(error)}</p> : null}
+      {error ? <p className="text-sm text-rose-warm">{safeOrderErrorMessage(error)}</p> : null}
     </div>
   );
 }

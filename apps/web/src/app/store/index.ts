@@ -1,5 +1,6 @@
 import { cartReducer } from "@/features/cart";
 import { customizerReducer } from "@/features/menu-customizer";
+import { staffAuthReducer } from "@/features/staff-auth/model/staffAuthSlice";
 import { baseApi } from "@/shared/api/baseApi";
 import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
@@ -8,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import "@/entities/menu-item";
 import "@/entities/order";
 import "@/entities/table";
+import "@/features/staff-auth/api/authApi";
 
 /** Фабрика стора (создаётся один раз на клиенте в StoreProvider) */
 export function makeStore() {
@@ -16,6 +18,7 @@ export function makeStore() {
       [baseApi.reducerPath]: baseApi.reducer,
       customizer: customizerReducer,
       cart: cartReducer,
+      staffAuth: staffAuthReducer,
     },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(baseApi.middleware),
   });

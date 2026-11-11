@@ -1,5 +1,6 @@
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@repo/shared";
 import type { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { prisma } from "./src/client";
 
 /**
@@ -219,6 +220,40 @@ async function main(): Promise<void> {
     });
   }
   console.log(`  ✔ Столики: ${tables.length}`);
+
+  // --- Персонал (срез 1 админки) -------------------------------------------
+  const staffAccounts = [
+    {
+      email: "admin@tactile.local",
+      firstName: "Админ",
+      role: "ADMIN" as const,
+      password: "admin123",
+    },
+    {
+      email: "barista@tactile.local",
+      firstName: "Бариста",
+      role: "BARISTA" as const,
+      password: "barista123",
+    },
+  ];
+  for (const account of staffAccounts) {
+    const passwordHash = await bcrypt.hash(account.password, 10);
+    await prisma.user.upsert({
+      where: { email: account.email },
+      update: {
+        firstName: account.firstName,
+        role: account.role,
+        passwordHash,
+      },
+      create: {
+        email: account.email,
+        firstName: account.firstName,
+        role: account.role,
+        passwordHash,
+      },
+    });
+  }
+  console.log(`  ✔ Персонал: ${staffAccounts.length} (admin@ / barista@)`);
 
   console.log("✅ Сидирование завершено");
 }

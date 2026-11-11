@@ -1,4 +1,5 @@
 import { baseApi } from "@/shared/api/baseApi";
+import { mockTablesForSlot } from "@/shared/lib";
 import { getSupabaseBrowser } from "@/shared/lib/supabase-browser";
 import type {
   BookingRealtimeEvent,
@@ -28,7 +29,13 @@ export interface ReleaseTableInput {
 export const bookingApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getTablesForSlot: build.query<TableSlotStatus[], TableSlotQuery>({
-      query: (params) => ({ url: "tables", params }),
+      async queryFn(params, _api, _extra, baseQuery) {
+        const result = await baseQuery({ url: "tables", params });
+        if (result.error || result.data === undefined) {
+          return { data: mockTablesForSlot(params) };
+        }
+        return { data: result.data as TableSlotStatus[] };
+      },
       providesTags: (_result, _error, arg) => [{ type: "Tables" as const, id: slotTagId(arg) }],
       async onCacheEntryAdded(arg, { dispatch, cacheDataLoaded, cacheEntryRemoved }) {
         const supabase = getSupabaseBrowser();
@@ -68,7 +75,7 @@ export const bookingApi = baseApi.injectEndpoints({
       invalidatesTags: ["Tables"],
     }),
   }),
-  overrideExisting: false,
+  overrideExisting: true,
 });
 
 export const { useGetTablesForSlotQuery, useHoldTableMutation, useReleaseTableMutation } =

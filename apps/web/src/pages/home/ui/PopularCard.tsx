@@ -11,7 +11,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import type { PopularCardProps } from "./types";
 
-/** Строка состава: топ-3 базовых слоя по весу с процентами (как compLine в макете) */
+/** Строка состава: топ-3 базовых слоя по весу с процентами */
 function compositionLine(item: MenuItem3DConfig): string {
   const base = item.layers.filter((l) => l.isDefault && !l.isOptionalAdd);
   const total = base.reduce((s, l) => s + l.nutrition.weightGrams, 0) || 1;
@@ -23,7 +23,7 @@ function compositionLine(item: MenuItem3DConfig): string {
     .join(" · ");
 }
 
-/** Карточка блюда в сетке «Популярные»: фото, состав, цена, круглая кнопка «+» */
+/** Карточка «Популярные»: фото на всю ширину блока, без серой подложки */
 export function PopularCard({ item }: PopularCardProps) {
   const dispatch = useAppDispatch();
   const [added, setAdded] = useState(false);
@@ -44,33 +44,37 @@ export function PopularCard({ item }: PopularCardProps) {
   };
 
   return (
-    <article className="card grid gap-3 !transform-none p-4 transition-[border-color,transform] hover:-translate-y-1.5">
+    <article className="card grid !transform-none gap-0 overflow-hidden !rounded-l !p-0 transition-[border-color,transform] hover:-translate-y-1">
       <Link
         to={`/menu/${item.id}`}
-        className="relative block aspect-[4/3] overflow-hidden rounded-m"
+        className="relative block aspect-[4/3] w-full overflow-hidden"
         aria-label={`Открыть ${item.name}`}
       >
         <img
           src={photo}
           alt={item.name}
           loading="lazy"
-          className="size-full object-cover transition-transform duration-500 hover:scale-[1.06]"
+          className="absolute inset-0 size-full object-cover transition-transform duration-500 hover:scale-[1.05]"
         />
       </Link>
-      <h3 className="text-[21px]">{item.name}</h3>
-      <p className="text-xs text-cream-dim">{compositionLine(item)}</p>
-      <div className="mt-0.5 flex items-center justify-between">
-        <span className="font-display text-[22px] font-bold">{formatPrice(totals.unitPrice)}</span>
-        <button
-          type="button"
-          onClick={handleAdd}
-          aria-label={`Добавить ${item.name} в корзину`}
-          className={`grid size-[46px] place-items-center rounded-full border-0 text-2xl font-bold transition-all duration-200 hover:rotate-90 hover:scale-110 ${
-            added ? "bg-mint text-ink-900" : "bg-gold text-ink-900 hover:bg-cream"
-          }`}
-        >
-          {added ? "✓" : "+"}
-        </button>
+      <div className="grid gap-2 p-3 sm:gap-3 sm:p-4">
+        <h3 className="line-clamp-2 text-[15px] leading-snug sm:text-[20px]">{item.name}</h3>
+        <p className="hidden text-xs text-cream-dim sm:line-clamp-2 sm:block">{compositionLine(item)}</p>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-display text-[17px] font-bold sm:text-[22px]">
+            {formatPrice(totals.unitPrice)}
+          </span>
+          <button
+            type="button"
+            onClick={handleAdd}
+            aria-label={`Добавить ${item.name} в корзину`}
+            className={`grid size-9 place-items-center rounded-full border-0 text-xl font-bold transition-all duration-200 hover:rotate-90 hover:scale-110 sm:size-[46px] sm:text-2xl ${
+              added ? "bg-mint text-ink-900" : "bg-gold text-ink-900 hover:bg-cream"
+            }`}
+          >
+            {added ? "✓" : "+"}
+          </button>
+        </div>
       </div>
     </article>
   );

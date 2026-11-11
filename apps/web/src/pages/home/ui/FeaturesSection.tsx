@@ -1,11 +1,9 @@
 import { useReveal } from "@/shared/lib";
-import { FeatureCard } from "./FeatureCard";
-import type { Feature } from "./types";
 
-const FEATURES: Feature[] = [
+const FEATURES = [
   {
-    title: "Зёрна спешелти",
-    text: "Свежая обжарка каждую неделю, сезонные лоты из Эфиопии и Колумбии.",
+    title: "Спешелти-зёрна",
+    text: "Свежая обжарка каждую неделю",
     icon: (
       <ellipse
         cx="17"
@@ -19,8 +17,8 @@ const FEATURES: Feature[] = [
     ),
   },
   {
-    title: "Уютная атмосфера",
-    text: "Вечерний свет, винил и кресла у окна. Работайте или расслабляйтесь.",
+    title: "Уютный зал",
+    text: "Вечерний свет и места у окна",
     icon: (
       <path
         d="M5 15 C5 8 11 5 17 5 C23 5 29 8 29 15 L29 26 C29 28 27 29 25 29 L9 29 C7 29 5 28 5 26 Z M11 15 h12 M11 20 h12"
@@ -31,8 +29,8 @@ const FEATURES: Feature[] = [
     ),
   },
   {
-    title: "Персонализация состава",
-    text: "Уберите сироп, добавьте шот — цена и КБЖУ пересчитаются мгновенно.",
+    title: "Состав по слоям",
+    text: "Цена и КБЖУ пересчитываются сразу",
     icon: (
       <>
         <circle cx="17" cy="17" r="12" stroke="currentColor" strokeWidth="1.6" />
@@ -48,7 +46,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "Бариста-профи",
-    text: "Чемпионы региональных соревнований по латте-арту и каппингу.",
+    text: "Латте-арт и точный экстракт",
     icon: (
       <path
         d="M8 13 h18 v10 a3 3 0 0 1 -3 3 h-12 a3 3 0 0 1 -3 -3 Z M12 13 c0-4 2-6 5-6 s5 2 5 6 M12 18 h10"
@@ -58,19 +56,30 @@ const FEATURES: Feature[] = [
       />
     ),
   },
-];
+] as const;
 
-/** Секция «Почему мы»: сетка преимуществ кофейни */
+/** Полоса преимуществ — без «карточного» хрома, как value-bar у Brew Haven */
 export function FeaturesSection() {
   const revealRef = useReveal<HTMLElement>();
 
   return (
-    <section ref={revealRef} className="wrap mt-20">
-      <p className="eyebrow">Почему мы</p>
-      <h2 className="section-title">Детали, ради которых возвращаются</h2>
-      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <section ref={revealRef} className="mt-16 border-y border-ink-500 bg-ink-800/60 sm:mt-24">
+      <div className="wrap grid grid-cols-2 gap-6 py-8 sm:gap-8 sm:py-10 lg:grid-cols-4">
         {FEATURES.map((feature) => (
-          <FeatureCard key={feature.title} feature={feature} />
+          <div key={feature.title} className="grid justify-items-center gap-2 text-center">
+            <svg
+              width="34"
+              height="34"
+              viewBox="0 0 34 34"
+              fill="none"
+              aria-hidden="true"
+              className="text-gold"
+            >
+              {feature.icon}
+            </svg>
+            <h3 className="font-display text-base font-semibold sm:text-lg">{feature.title}</h3>
+            <p className="max-w-[18ch] text-xs text-cream-dim sm:text-sm">{feature.text}</p>
+          </div>
         ))}
       </div>
     </section>

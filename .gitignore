@@ -23,3 +23,7 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Local tooling / image backups
+tmp-vignette/
+apps/web/public/drinks/_orig/

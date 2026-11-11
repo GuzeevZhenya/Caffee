@@ -28,7 +28,7 @@ export const orderApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _error, arg) => [{ type: "Orders" as const, id: arg.orderId }],
     }),
   }),
-  overrideExisting: false,
+  overrideExisting: true,
 });
 
 export const { useCreateOrderMutation, useGetOrderStatusQuery, useTriggerCookingMutation } =

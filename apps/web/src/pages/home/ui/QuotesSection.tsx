@@ -8,24 +8,26 @@ const QUOTES: Quote[] = [
     cite: "Анна М. — гость зоны у окна",
   },
   {
-    text: "«Забронировал стол на карте зала за минуту. Холд честный: десять минут на оформление, и никакого овербукинга».",
-    cite: "Дмитрий К. — завсегдатай вечерних слотов",
+    text: "«Забронировал стол за минуту. Холд честный: десять минут на оформление, и никакого овербукинга».",
+    cite: "Дмитрий К. — вечерние слоты",
   },
   {
-    text: "«Тирамису в exploded view — это что-то. Слои видно как в часовом механизме. Вкус, кстати, тоже на уровне».",
-    cite: "Ольга С. — пришла за чизкейком, осталась за кофе",
+    text: "«Тирамису по слоям — как часовой механизм. Вкус тоже на уровне: пришла за десертом, осталась за кофе».",
+    cite: "Ольга С. — за чизкейком",
   },
 ];
 
-/** Секция «Отзывы»: что говорят гости */
+/** Отзывы гостей (BODRIN testimonials) */
 export function QuotesSection() {
   const revealRef = useReveal<HTMLElement>();
 
   return (
-    <section ref={revealRef} className="wrap mt-20">
-      <p className="eyebrow">Отзывы</p>
-      <h2 className="section-title">Что говорят гости</h2>
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
+    <section ref={revealRef} className="wrap mt-16 sm:mt-24">
+      <div className="text-center">
+        <p className="eyebrow eyebrow-center justify-center">Reviews</p>
+        <h2 className="section-title">Что говорят гости</h2>
+      </div>
+      <div className="mt-8 grid gap-4 sm:mt-10 sm:gap-6 md:grid-cols-3">
         {QUOTES.map((quote) => (
           <QuoteCard key={quote.cite} quote={quote} />
         ))}

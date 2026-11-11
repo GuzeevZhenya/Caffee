@@ -1,6 +1,8 @@
 import { getGuestId } from "@/shared/lib/guest-id";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+const STAFF_TOKEN_KEY = "tactile.staff.token";
+
 /**
  * Базовый API-слайс RTK Query.
  * Доменные эндпоинты инжектятся из entities (menu-item, table, order).
@@ -11,12 +13,17 @@ export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: "/api",
     prepareHeaders: (headers) => {
-      // Анонимный гость — владелец Redis-локов столов (до авторизации)
       const guestId = getGuestId();
       if (guestId) headers.set("x-guest-id", guestId);
+      try {
+        const token = localStorage.getItem(STAFF_TOKEN_KEY);
+        if (token) headers.set("authorization", `Bearer ${token}`);
+      } catch {
+        // ignore
+      }
       return headers;
     },
   }),
-  tagTypes: ["Menu", "Tables", "Orders"],
+  tagTypes: ["Menu", "Tables", "Orders", "Staff"],
   endpoints: () => ({}),
 });

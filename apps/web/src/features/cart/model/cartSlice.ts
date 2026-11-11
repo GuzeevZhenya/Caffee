@@ -27,6 +27,8 @@ export interface CartBooking {
   slotEnd: string;
   /** Дедлайн холда из Redis — для таймера TableHoldTimer */
   heldUntil: string | null;
+  /** Booking.id из БД — нужен для DINE_IN в checkout */
+  bookingId: string | null;
 }
 
 export interface CartState {

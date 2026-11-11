@@ -1,42 +1,77 @@
 import { useReveal } from "@/shared/lib";
+import { Link } from "react-router";
+
+const CHECKS = [
+  "Спешелти-лоты с прозрачным происхождением",
+  "Свежая обжарка под наш профиль",
+  "Честный состав по слоям и граммовке",
+  "Бариста собирает напиток под ваш вкус",
+] as const;
 
 const ABOUT_STATS: Array<[string, string]> = [
-  ["3 года", "варим кофе в Минске"],
+  ["3+", "года в Минске"],
+  ["16", "позиций меню"],
   ["25K+", "чашек за сезон"],
   ["4.9", "рейтинг гостей"],
-  ["12", "позиций в меню"],
 ];
 
-/** Секция «О кофейне»: фото бариста и статистика */
+/** About: фото бариста + чеклист + цифры (BODRIN structure) */
 export function AboutSection() {
   const revealRef = useReveal<HTMLElement>();
 
   return (
-    <section ref={revealRef} className="wrap mt-20">
-      <div className="card grid !transform-none items-center gap-8 overflow-hidden p-0 lg:grid-cols-[1fr_1.1fr]">
-        <div className="relative min-h-[300px] lg:min-h-[420px]">
+    <section ref={revealRef} id="about" className="wrap mt-16 sm:mt-24">
+      <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+        <div className="relative min-h-[280px] overflow-hidden rounded-l border border-ink-500 sm:min-h-[360px] lg:min-h-[480px]">
           <img
             src="/images/barista.png"
             alt="Бариста вливает молоко, создавая латте-арт"
             loading="lazy"
             className="absolute inset-0 size-full object-cover"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_55%,var(--color-ink-700)_100%)]" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,oklch(0.145_0.008_55/0.75))]"
+          />
         </div>
-        <div className="grid gap-4 p-6 lg:py-12 lg:pr-12">
-          <p className="eyebrow">О кофейне</p>
-          <h2 className="section-title">Tactile — про тактильный кофе</h2>
-          <p className="max-w-[52ch] text-cream-dim">
-            Мы верим, что хороший кофе можно «потрогать»: увидеть слои, понять состав, собрать
-            напиток под себя. Поэтому наше меню — живое и честное.
+
+        <div className="grid gap-5">
+          <p className="eyebrow">About Us</p>
+          <h2 className="section-title !mt-0">
+            Больше, чем просто{" "}
+            <em className="italic text-gold">кофе</em>
+          </h2>
+          <p className="max-w-[48ch] text-cream-dim">
+            Tactile — про тактильный опыт: увидеть слои, понять состав, собрать напиток под себя.
+            Вечерний зал, спешелти и меню без сюрпризов в чеке.
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-4">
+          <ul className="grid gap-2.5">
+            {CHECKS.map((line) => (
+              <li key={line} className="flex items-start gap-3 text-sm text-cream">
+                <span
+                  aria-hidden="true"
+                  className="mt-1 grid size-5 shrink-0 place-items-center rounded-full bg-gold text-[11px] font-bold text-ink-900"
+                >
+                  ✓
+                </span>
+                {line}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:gap-4">
             {ABOUT_STATS.map(([strong, span]) => (
-              <div key={strong} className="rounded-m border border-ink-500 p-4">
-                <strong className="block font-display text-[28px] text-gold">{strong}</strong>
-                <span className="text-[13px] text-cream-dim">{span}</span>
+              <div key={strong} className="rounded-m border border-ink-500 bg-ink-800/40 p-3 sm:p-4">
+                <strong className="block font-display text-[24px] text-gold sm:text-[28px]">
+                  {strong}
+                </strong>
+                <span className="text-[12px] text-cream-dim sm:text-[13px]">{span}</span>
               </div>
             ))}
+          </div>
+          <div>
+            <Link to="/menu" className="btn btn-primary mt-2">
+              Узнать меню
+            </Link>
           </div>
         </div>
       </div>
