@@ -14,6 +14,7 @@ export function getSupabaseBrowser(): SupabaseClient | null {
   if (typeof window === "undefined") return null;
   if (browserClient) return browserClient;
 
+  // Vite отдаёт только VITE_*; те же значения, что SUPABASE_* в .env.example
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (!url || !anonKey) return null;

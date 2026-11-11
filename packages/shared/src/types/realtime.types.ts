@@ -116,4 +116,6 @@ export interface HoldTableResponse {
   tableId: string;
   slotStart: string;
   heldUntil: string | null;
+  /** Booking.id в БД (статус HELD); null — если только Redis без Prisma */
+  bookingId: string | null;
 }

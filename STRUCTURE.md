@@ -29,7 +29,7 @@
 | ---- | ---------- |
 | `app/main.tsx`, `router.tsx`, `store/`, `styles/` | Вход, маршруты, Redux, дизайн-система |
 | `pages/home\|menu\|menu-item\|booking\|checkout\|tma` | Страницы |
-| `widgets/hero-showcase`, `menu-item-viewer`, `app-header`, `app-footer` | Крупные блоки |
+| `widgets/hero-showcase`, `menu-item-viewer`, `hall-map`, `app-header`, `app-footer` | Крупные блоки |
 | `features/cart`, `book-table`, `menu-customizer`, `coffee-builder` | Сценарии |
 | `entities/menu-item` | `menuApi`, `MenuItemCard`, `DrinkPhoto`, `LayerStackSvg` |
 | `entities/table`, `entities/order` | Бронь / заказы (RTK Query) |
@@ -46,7 +46,7 @@
 | `src/routes/menu.ts` | `GET /menu` (+ мок при сбое БД) |
 | `src/routes/tables.ts` | статусы / hold / unlock |
 | `src/routes/orders.ts` | create / status / trigger |
-| `src/lib/broadcast.ts` | Supabase Realtime (`NEXT_PUBLIC_SUPABASE_*`) |
+| `src/lib/broadcast.ts` | Supabase Realtime (`SUPABASE_*` → `VITE_*` → `NEXT_PUBLIC_*`) |
 
 ## packages/
 

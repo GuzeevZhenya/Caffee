@@ -28,6 +28,12 @@ const releaseBodySchema = z.object({
   slotStart: z.coerce.date(),
 });
 
+/** Гость из x-guest-id → уникальный User в БД (не один общий guest@) */
+function guestEmail(guestId: string): string {
+  const safe = guestId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) || "anonymous";
+  return `guest+${safe}@tactile.local`;
+}
+
 export const tablesRoutes = new Hono()
   /**
    * GET /api/tables?date=YYYY-MM-DD&slot=HH:mm[&guestsCount=2][&hasPowerOutlet=true]
@@ -53,7 +59,6 @@ export const tablesRoutes = new Hono()
     const slotEnd = new Date(slotStart.getTime() + SLOT_DURATION_MINUTES * 60_000);
     const guestId = c.req.header("x-guest-id");
 
-    // 1. Столы и пересекающиеся брони — из БД; без БД столы берём из моков
     let tables: CafeTableConfig[];
     let bookedTableIds = new Set<string>();
     try {
@@ -78,7 +83,6 @@ export const tablesRoutes = new Hono()
       tables = MOCK_TABLES;
     }
 
-    // 2. Redis-локи на слот (одним mget). Без Redis — все столы без холдов
     let locks: Record<string, TableLock> = {};
     try {
       locks = await getTableLocks(
@@ -89,7 +93,6 @@ export const tablesRoutes = new Hono()
       // Upstash не настроен — статусы только из БД
     }
 
-    // 3. Фильтры запроса + сборка статусов
     const result: TableSlotStatus[] = tables
       .filter((table) => (guestsCount ? table.seats >= guestsCount : true))
       .filter((table) => (hasPowerOutlet ? table.hasPowerOutlet : true))
@@ -107,9 +110,7 @@ export const tablesRoutes = new Hono()
     return c.json(result);
   })
   /**
-   * POST /api/tables/hold — временный лок стола в Redis на 10 минут.
-   * Атомарно (SET NX EX): если стол уже держит другой гость — 409.
-   * TODO(Фаза 4): после авторизации создавать Booking со статусом HELD в БД.
+   * POST /api/tables/hold — Redis-лок 10 мин + Booking(HELD) в БД (Фаза 4).
    */
   .post("/hold", async (c) => {
     const parsed = holdTableSchema.safeParse(await c.req.json());
@@ -118,7 +119,7 @@ export const tablesRoutes = new Hono()
     }
 
     const guestId = c.req.header("x-guest-id") ?? "anonymous";
-    const { tableId, startTime } = parsed.data;
+    const { tableId, startTime, endTime, guestsCount } = parsed.data;
     const slotStartIso = startTime.toISOString();
 
     try {
@@ -131,13 +132,43 @@ export const tablesRoutes = new Hono()
           tableId,
           slotStart: slotStartIso,
           heldUntil: existing?.expiresAt ?? null,
+          bookingId: null,
         };
         return c.json(response, 409);
       }
 
       const heldUntil = new Date(Date.now() + TABLE_LOCK_TTL_SECONDS * 1000).toISOString();
+      let bookingId: string | null = null;
 
-      // Мгновенный статус «Бронируется другим гостем» для всех клиентов (best-effort)
+      try {
+        const guest = await prisma.user.upsert({
+          where: { email: guestEmail(guestId) },
+          update: {},
+          create: {
+            email: guestEmail(guestId),
+            firstName: "Гость",
+          },
+        });
+
+        const booking = await prisma.booking.create({
+          data: {
+            userId: guest.id,
+            tableId,
+            startTime,
+            endTime,
+            guestsCount: guestsCount ?? 2,
+            status: "HELD",
+            holdExpiresAt: new Date(heldUntil),
+          },
+        });
+        bookingId = booking.id;
+      } catch (error) {
+        console.warn(
+          "[api/tables/hold] Booking в БД не создан (мок-режим Redis-only):",
+          error instanceof Error ? error.message : error,
+        );
+      }
+
       await broadcastTableLock({
         type: "TABLE_HELD",
         payload: {
@@ -155,6 +186,7 @@ export const tablesRoutes = new Hono()
         tableId,
         slotStart: slotStartIso,
         heldUntil,
+        bookingId,
       };
       return c.json(response);
     } catch (error) {
@@ -166,8 +198,7 @@ export const tablesRoutes = new Hono()
     }
   })
   /**
-   * DELETE /api/tables/hold — досрочное снятие своего лока.
-   * Чужой лок снять нельзя (проверка владельца внутри unlockTable).
+   * DELETE /api/tables/hold — снять свой Redis-лок и отменить Booking(HELD).
    */
   .delete("/hold", async (c) => {
     const parsed = releaseBodySchema.safeParse(await c.req.json());
@@ -182,6 +213,23 @@ export const tablesRoutes = new Hono()
       const released = await unlockTable(parsed.data.tableId, slotStartIso, guestId);
 
       if (released) {
+        try {
+          await prisma.booking.updateMany({
+            where: {
+              tableId: parsed.data.tableId,
+              startTime: parsed.data.slotStart,
+              status: "HELD",
+              user: { email: guestEmail(guestId) },
+            },
+            data: { status: "CANCELLED" },
+          });
+        } catch (error) {
+          console.warn(
+            "[api/tables/hold] не удалось отменить Booking:",
+            error instanceof Error ? error.message : error,
+          );
+        }
+
         await broadcastTableLock({
           type: "TABLE_RELEASED",
           payload: {

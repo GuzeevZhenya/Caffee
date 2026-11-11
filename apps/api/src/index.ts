@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { authRoutes } from "./routes/auth";
 import { menuRoutes } from "./routes/menu";
 import { ordersRoutes } from "./routes/orders";
 import { tablesRoutes } from "./routes/tables";
@@ -17,6 +18,7 @@ app.use("*", cors());
 
 app.get("/health", (c) => c.json({ ok: true, service: "tactile-coffee-api" }));
 
+app.route("/auth", authRoutes);
 app.route("/menu", menuRoutes);
 app.route("/tables", tablesRoutes);
 app.route("/orders", ordersRoutes);

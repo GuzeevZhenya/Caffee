@@ -85,6 +85,7 @@ export function HoldTableButton({ table, date, slot }: HoldTableButtonProps) {
             slotStart: startTime.toISOString(),
             slotEnd: endTime.toISOString(),
             heldUntil: result.heldUntil,
+            bookingId: result.bookingId,
           }),
         );
       }

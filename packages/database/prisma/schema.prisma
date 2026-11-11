@@ -72,6 +72,8 @@ model User {
   firstName    String?
   phone        String?  @unique
   email        String?  @unique
+  /** bcrypt-хеш; null у гостей / Telegram без пароля */
+  passwordHash String?
   role         Role     @default(CUSTOMER)
   bonusPoints  Int      @default(0)
 

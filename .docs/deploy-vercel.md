@@ -28,7 +28,7 @@
 
 - `DATABASE_URL`, `DIRECT_URL` — Supabase Postgres
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (broadcast; TODO унифицировать с `VITE_*`)
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` (предпочтительно) или те же `VITE_SUPABASE_*` / legacy `NEXT_PUBLIC_SUPABASE_*`
 
 ## Помощь с БД (Supabase + Prisma)
 

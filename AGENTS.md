@@ -109,7 +109,7 @@ Seed берёт меню из моков `@repo/shared`. Деплой web на V
 
 Шаблон — `.env.example`: `DATABASE_URL`/`DIRECT_URL`, `VITE_SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`, `UPSTASH_REDIS_REST_*`, `BOT_TOKEN`, `WEBAPP_URL`. Postinstall Prisma/esbuild — `onlyBuiltDependencies` в `pnpm-workspace.yaml`.
 
-Нюанс: web читает `VITE_SUPABASE_*`, API broadcast — `NEXT_PUBLIC_SUPABASE_*`; TODO унифицировать в Фазе 4.
+Supabase Realtime: канон `SUPABASE_URL` / `SUPABASE_ANON_KEY`; web — `VITE_SUPABASE_*` (те же значения); API читает `SUPABASE_*` → `VITE_*` → `NEXT_PUBLIC_*` (legacy).
 
 ## Правила разработки
 
@@ -124,7 +124,7 @@ Seed берёт меню из моков `@repo/shared`. Деплой web на V
 - [x] **Фаза 2** — переход web на Vite + React 19 + react-router 7 по FSD; API вынесен в `apps/api` (Hono); Redux Toolkit + RTK Query: `menuApi`, `bookingApi` (Realtime в `onCacheEntryAdded`), `orderApi`, слайсы `cart`/`customizer`/`scene3d`; страницы menu/booking/checkout/tma. Валидация пройдена: `typecheck` 5/5, `lint` 0 ошибок, `format` чисто, `vite build` успешен, smoke API (health/menu/tables) и Vite-прокси — OK (03.11.2026)
 - [x] **Фаза 3** — страница блюда: полномасштабное фото + «указатели» слоёв (название, граммовка, ккал) с реактивным пересчётом цены/КБЖУ (03.11.2026)
 - [x] **Фаза 3.5** — тёмная тема, лендинг (hero + Current Pick), Coffee Builder (`custom_coffee`). R3F/3D UI и `scene-3d`/`hero-3d` удалены; страница блюда — фото + состав. Валидация: typecheck/lint/build OK (03.11.2026; чистка 10.11.2026)
-- [ ] **Фаза 4** — Карта зала(сгенерированный приблизительно зал, с расположением окон, дверей, туалет и столы), связка брони с корзиной (DINE_IN сейчас отключён в checkout), создание Booking в БД, унификация Supabase env-переменных
+- [x] **Фаза 4** — 2D-карта зала (окна/дверь/WC/бар/столы), Booking(HELD) при холде, DINE_IN в checkout по `bookingId`, унификация Supabase env (11.11.2026)
 - [ ] **Фаза 5** — Telegram-бот grammY: Платная доставка(бесплатно от 30р) авторизация(Варианты: 1. Имя и телефон с телеграмма. 2. Пользователь вводит имя, телефон, после чего выпадающее меню - app приложение с картинками товара, выбор доставки, и дату/время), доставка, триггер бариста за 15 минут, live-трекинг статуса.
 
 ## Переделать (статус → `.docs/memory-sprint-polish.md`)
@@ -133,7 +133,7 @@ Seed берёт меню из моков `@repo/shared`. Деплой web на V
 - [x] 1 — hero + scroll-to-top (без «коробки»)
 - [x] 2 — меню: фото + «Состав»
 - [x] 3 — оверлеи состава (JPG-варианты тирамису — опционально позже)
-- [ ] 4 — страница столов / Фаза 4 (следующий спринт)
-- [ ] 5 — админ-панель (admin/staff, по очереди)
+- [x] 4 — страница столов / Фаза 4 (карта зала + Booking + DINE_IN)
+- [~] 5 — админ-панель: срез 1 (login JWT + stub-вкладки) ✅; дальше CRUD/смены/склад
 - [x] 6 — фолбэк на моки, без ошибок в prod
 - [x] 7 — чистка + prep Vercel (деплой аккаунта + БД — вручную)
