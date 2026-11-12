@@ -48,32 +48,32 @@ Vite проксирует `/api` → `http://localhost:4000`.
 
 ## API (`/api`)
 
-| Метод и путь | Назначение |
-| --- | --- |
-| `GET /health` | healthcheck |
-| `GET /menu` | меню из БД; мок, если нет `.env` или сбой БД |
-| `GET /tables?date&slot` | `FREE` / `HELD` / `BOOKED` и Redis-локи |
-| `POST /tables/hold` | лок на 10 минут, `Booking(HELD)`, `bookingId`, broadcast |
-| `DELETE /tables/hold` | снять свой холд |
-| `POST /orders` | заказ, цена считается на сервере |
-| `GET /orders?id=` | статус заказа |
-| `PATCH /orders/:id/trigger` | «Готовить сейчас» |
-| `POST /auth/login` | email и пароль персонала → JWT |
-| `GET /auth/me` | текущий сотрудник по Bearer |
+| Метод и путь                | Назначение                                               |
+| --------------------------- | -------------------------------------------------------- |
+| `GET /health`               | healthcheck                                              |
+| `GET /menu`                 | меню из БД; мок, если нет `.env` или сбой БД             |
+| `GET /tables?date&slot`     | `FREE` / `HELD` / `BOOKED` и Redis-локи                  |
+| `POST /tables/hold`         | лок на 10 минут, `Booking(HELD)`, `bookingId`, broadcast |
+| `DELETE /tables/hold`       | снять свой холд                                          |
+| `POST /orders`              | заказ, цена считается на сервере                         |
+| `GET /orders?id=`           | статус заказа                                            |
+| `PATCH /orders/:id/trigger` | «Готовить сейчас»                                        |
+| `POST /auth/login`          | email и пароль персонала → JWT                           |
+| `GET /auth/me`              | текущий сотрудник по Bearer                              |
 
 Гость: заголовок `x-guest-id` (`apps/web/src/shared/lib/guest-id.ts`), пользователь в БД — `guest@tactile.local`. Секреты — корневой `.env` (шаблон `.env.example`): его читают API, Vite и `pnpm db:push`. Без `DATABASE_URL` меню и столы читаются из моков, а заказы, правки меню, смены, склад и сотрудники пишутся в `data/local-store.json` (файл в `.gitignore`). Если строка Supabase задана, эти фолбэки выключены: источник — Prisma, сбой базы — `503`.
 
 Персонал: JWT на 7 дней, ключ `tactile.staff.token` в `localStorage`. `RequireStaff` закрывает `/staff/*`, кроме `/staff/login`. Вкладки: заказы и статусы, меню (цена и наличие), смены, выручка, уведомления, сотрудники, склад. Учётки сида — `.docs/memory-sprint-admin-shell.md`. Без базы те же учётки лежат в `data/local-store.json`.
 
-| Метод и путь | Назначение |
-| --- | --- |
-| `GET /staff/orders`, `PATCH /staff/orders/:id` | очередь и статус |
-| `GET /staff/menu`, `PATCH /staff/menu/:id` | цена, название, наличие |
-| `GET /staff/revenue?date=` | суммы за день |
-| `GET /staff/shifts`, `POST /staff/shifts` | открыть и закрыть смену |
-| `GET /staff/stock`, `PATCH /staff/stock/:id` | остатки выпечки |
-| `GET /staff/notifications` | готовые заказы, низкий остаток, смена |
-| `GET /staff/employees`, `POST /staff/employees` | список и новая учётка |
+| Метод и путь                                    | Назначение                            |
+| ----------------------------------------------- | ------------------------------------- |
+| `GET /staff/orders`, `PATCH /staff/orders/:id`  | очередь и статус                      |
+| `GET /staff/menu`, `PATCH /staff/menu/:id`      | цена, название, наличие               |
+| `GET /staff/revenue?date=`                      | суммы за день                         |
+| `GET /staff/shifts`, `POST /staff/shifts`       | открыть и закрыть смену               |
+| `GET /staff/stock`, `PATCH /staff/stock/:id`    | остатки выпечки                       |
+| `GET /staff/notifications`                      | готовые заказы, низкий остаток, смена |
+| `GET /staff/employees`, `POST /staff/employees` | список и новая учётка                 |
 
 ## Контракты
 
@@ -88,14 +88,14 @@ Vite проксирует `/api` → `http://localhost:4000`.
 
 ## Команды
 
-| Команда | Что делает |
-| --- | --- |
-| `pnpm dev` | web `:5173` и api `:4000` |
-| `pnpm build` / `build:web` | сборка всего монорепо / только web |
-| `pnpm lint` / `lint:fix` | ESLint |
-| `pnpm format` / `format:fix` | Prettier |
-| `pnpm typecheck` | `tsc --noEmit` через turbo |
-| `pnpm ci:check` | lint + typecheck + build |
+| Команда                                                  | Что делает                                                  |
+| -------------------------------------------------------- | ----------------------------------------------------------- |
+| `pnpm dev`                                               | web `:5173` и api `:4000`                                   |
+| `pnpm build` / `build:web`                               | сборка всего монорепо / только web                          |
+| `pnpm lint` / `lint:fix`                                 | ESLint                                                      |
+| `pnpm format` / `format:fix`                             | Prettier                                                    |
+| `pnpm typecheck`                                         | `tsc --noEmit` через turbo                                  |
+| `pnpm ci:check`                                          | lint + typecheck + build                                    |
 | `pnpm db:generate` / `db:push` / `db:seed` / `db:status` | Prisma Client / схема в Supabase / сид / проверка счётчиков |
 
 Скиллы агента: `.cursor/skills/` — `/формат`, `/заключение`. Чек-лист ревью — `REVIEW.md`.
@@ -113,3 +113,16 @@ Vite проксирует `/api` → `http://localhost:4000`.
 ## STOP
 
 Остановись и спроси, если без ответа нельзя выбрать поведение, нужен `push --force` или `reset --hard`, либо в коммит попадают секреты.
+
+## Исправить
+
+0. Каждый этап ниже сперва показываешь что сделал и после одобрения следующий, пока я не проверю дальше стоп.
+1. ![alt text](image-1.png) - Главная страница. картинку во всю высоту
+2. ![alt text](image-2.png) - Главная страница, сделать фоновой картинкой. не растягивать
+3. ![alt text](image-3.png) - menu/item -вернуть вариант как был
+4. ![alt text](image-4.png) - Бронирование столов,белый квадрат появляется при выборе стола, проверить
+5. Админ панель, меню - нет возможности добавить новый товар, и изменить картинку
+6. ![alt text](image-5.png) - Футер -сделать страницу о кофейне, накидай что нибудь туда. Убери состав по слоям и добавь пункты для обработки перс данных
+   отдельная страница с заканами РБ, а так же выводом что обрабатываются персональные и локал сторедж, плюс поищи еще какие есть требования при оформлении
+   сайта для экслоотации.
+7. Подключение к supabase.
