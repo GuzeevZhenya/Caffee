@@ -1,12 +1,24 @@
 import { Link } from "react-router";
 
 /**
- * Hero: фото капучино отдельным кадром, без растягивания на весь экран.
+ * Hero на высоту экрана. Капучино — фон целиком (object-contain),
+ * чашка и блюдце не обрезаются.
  */
 export function HeroShowcase() {
   return (
-    <section className="border-b border-ink-500/60">
-      <div className="wrap grid items-center gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(240px,380px)] lg:gap-12 lg:py-14">
+    <section className="relative isolate min-h-[calc(100dvh-60px)] overflow-hidden border-b border-ink-500/60 sm:min-h-[calc(100dvh-68px)]">
+      <img
+        src="/drinks/cappuccino.jpg"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 size-full object-contain object-bottom lg:object-right"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[linear-gradient(180deg,oklch(0.145_0.008_55/0.92)_0%,oklch(0.145_0.008_55/0.55)_38%,oklch(0.145_0.008_55/0.18)_100%)] lg:bg-[linear-gradient(90deg,oklch(0.145_0.008_55)_0%,oklch(0.145_0.008_55/0.88)_38%,oklch(0.145_0.008_55/0.28)_62%,oklch(0.145_0.008_55/0.08)_82%,transparent_100%)]"
+      />
+
+      <div className="wrap relative z-10 flex min-h-[calc(100dvh-60px)] items-center py-12 sm:min-h-[calc(100dvh-68px)] sm:py-16">
         <div className="max-w-[36rem]">
           <p className="font-display text-[clamp(17px,2.2vw,22px)] italic text-gold">
             Глубокий. Мягкий. Точный.
@@ -31,12 +43,6 @@ export function HeroShowcase() {
             </Link>
           </div>
         </div>
-
-        <img
-          src="/drinks/cappuccino.jpg"
-          alt="Капучино Tactile"
-          className="mx-auto aspect-[4/5] w-full max-w-[380px] rounded-l object-cover object-[50%_30%] shadow-[0_24px_60px_oklch(0_0_0/0.35)]"
-        />
       </div>
     </section>
   );

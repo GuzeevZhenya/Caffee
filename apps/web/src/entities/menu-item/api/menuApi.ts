@@ -3,17 +3,14 @@ import { mockMenuResponse } from "@/shared/lib";
 import type { MenuResponse } from "@repo/shared";
 
 /**
- * Загрузка 3D-меню и категорий (GET /api/menu).
- * Моки — если API не запущен. 503 (Supabase задан, но не отвечает) показываем как ошибку.
+ * Загрузка меню (GET /api/menu).
+ * Сбой API или Supabase — моки из @repo/shared, витрина не пустая.
  */
 export const menuApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getMenu: build.query<MenuResponse, void>({
       async queryFn(_arg, _api, _extra, baseQuery) {
         const result = await baseQuery("menu");
-        if (result.error && "status" in result.error && result.error.status === 503) {
-          return { error: result.error };
-        }
         if (result.error || result.data === undefined) {
           return { data: mockMenuResponse() };
         }

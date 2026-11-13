@@ -31,9 +31,6 @@ export const bookingApi = baseApi.injectEndpoints({
     getTablesForSlot: build.query<TableSlotStatus[], TableSlotQuery>({
       async queryFn(params, _api, _extra, baseQuery) {
         const result = await baseQuery({ url: "tables", params });
-        if (result.error && "status" in result.error && result.error.status === 503) {
-          return { error: result.error };
-        }
         if (result.error || result.data === undefined) {
           return { data: mockTablesForSlot(params) };
         }

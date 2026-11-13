@@ -16,8 +16,7 @@ interface MenuItemViewerProps {
 }
 
 /**
- * Страница блюда: полный кадр фото (без обрезки) + состав.
- * Фон страницы — единый ink-900, как правая колонка.
+ * Страница блюда: фото-карточка слева, состав и итог справа.
  */
 export function MenuItemViewer({ item }: MenuItemViewerProps) {
   const dispatch = useAppDispatch();
@@ -34,26 +33,26 @@ export function MenuItemViewer({ item }: MenuItemViewerProps) {
   };
 
   return (
-    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-      <div className="menu-item-photo-stage mx-auto w-full max-w-[520px] lg:mx-0 lg:max-w-none">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(240px,340px)_minmax(0,1fr)] lg:gap-8">
+      <div className="relative aspect-square w-full max-w-[340px] overflow-hidden rounded-l border border-ink-500 bg-ink-700 lg:max-w-none">
         <DrinkPhoto
           item={item}
-          fit="contain"
-          className="w-full"
-          imgClassName="block h-auto w-full object-contain"
+          fit="cover"
+          className="absolute inset-0"
+          imgClassName="absolute inset-0 size-full object-cover"
           activeLayerIds={configuration.activeLayerIds}
         />
       </div>
 
-      <aside className="grid min-w-0 content-start gap-4">
+      <aside className="grid min-w-0 content-start gap-5">
         <div>
-          <h1 className="text-[clamp(22px,2.8vw,32px)] leading-tight">{item.name}</h1>
+          <h1 className="text-[clamp(24px,3vw,34px)] leading-tight">{item.name}</h1>
           <p className="mt-1 text-sm text-cream-dim">{item.description}</p>
         </div>
 
         <CustomizerPanel item={item} />
 
-        <div className="grid gap-3 border border-ink-500/80 bg-ink-800/40 p-4 sm:p-5">
+        <div className="grid gap-4 rounded-m border border-ink-500 bg-ink-700 p-5">
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-sm text-cream-dim">Итого · {totals.weightGrams} г</span>
             <span className="font-display text-2xl font-bold sm:text-3xl">
@@ -67,9 +66,9 @@ export function MenuItemViewer({ item }: MenuItemViewerProps) {
               [totals.fats, "жиры"],
               [totals.carbs, "углев."],
             ].map(([value, label]) => (
-              <div key={label} className="border border-ink-500/80 px-1 py-2">
-                <strong className="block font-display text-[14px] sm:text-[15px]">{value}</strong>
-                <span className="text-[10px] uppercase tracking-[0.08em] text-cream-dim sm:text-[11px]">
+              <div key={label} className="rounded-s border border-ink-500 px-1 py-2">
+                <strong className="block font-display text-[15px]">{value}</strong>
+                <span className="text-[11px] uppercase tracking-[0.08em] text-cream-dim">
                   {label}
                 </span>
               </div>

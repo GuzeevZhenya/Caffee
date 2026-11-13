@@ -6,8 +6,7 @@ import { Hono } from "hono";
 
 /**
  * GET /api/menu — категории и блюда с 3D-слоями.
- * Моки — только если DATABASE_URL не задан. С Supabase ошибка соединения
- * возвращает 503, а не витрину из моков.
+ * Если Supabase недоступен — отдаём моки, витрина не остаётся пустой.
  */
 export const menuRoutes = new Hono().get("/", async (c) => {
   try {
@@ -29,16 +28,10 @@ export const menuRoutes = new Hono().get("/", async (c) => {
     };
     return c.json(response);
   } catch (error) {
-    if (databaseConfigured()) {
-      console.error(
-        "[api/menu] Supabase недоступен:",
-        databaseErrorText(error),
-      );
-      return c.json({ error: "database_unavailable" }, 503);
-    }
     console.warn(
-      "[api/menu] DATABASE_URL не задан, отдаю моки:",
-      error instanceof Error ? error.message : error,
+      databaseConfigured()
+        ? `[api/menu] Supabase недоступен, отдаю моки: ${databaseErrorText(error)}`
+        : `[api/menu] DATABASE_URL не задан, отдаю моки: ${databaseErrorText(error)}`,
     );
     const response: MenuResponse = {
       categories: MOCK_CATEGORIES,

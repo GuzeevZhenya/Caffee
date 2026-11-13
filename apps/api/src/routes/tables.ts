@@ -79,16 +79,10 @@ export const tablesRoutes = new Hono()
       tables = rows.map(toCafeTableConfig);
       bookedTableIds = new Set(bookings.map((booking) => booking.tableId));
     } catch (error) {
-      if (databaseConfigured()) {
-        console.error(
-          "[api/tables] Supabase недоступен:",
-          databaseErrorText(error),
-        );
-        return c.json({ error: "database_unavailable" }, 503);
-      }
       console.warn(
-        "[api/tables] DATABASE_URL не задан, отдаю моковые столы:",
-        error instanceof Error ? error.message : error,
+        databaseConfigured()
+          ? `[api/tables] Supabase недоступен, отдаю моковые столы: ${databaseErrorText(error)}`
+          : `[api/tables] DATABASE_URL не задан, отдаю моковые столы: ${databaseErrorText(error)}`,
       );
       tables = MOCK_TABLES;
       useMockOccupancy = true;

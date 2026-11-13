@@ -21,8 +21,8 @@ export function AboutSection() {
 
   return (
     <section ref={revealRef} id="about" className="wrap mt-16 sm:mt-24">
-      <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
-        <div className="relative min-h-[280px] overflow-hidden rounded-l border border-ink-500 sm:min-h-[360px] lg:min-h-[480px]">
+      <div className="grid items-stretch gap-8 lg:grid-cols-2 lg:gap-14">
+        <div className="relative h-full min-h-[280px] overflow-hidden rounded-l border border-ink-500 sm:min-h-[360px]">
           <img
             src="/images/barista.png"
             alt="Бариста вливает молоко, создавая латте-арт"
