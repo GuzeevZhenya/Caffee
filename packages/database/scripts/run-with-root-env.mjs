@@ -6,6 +6,23 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+function withSsl(url) {
+  if (!url || /[?&]sslmode=/.test(url)) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
+}
+
+/** :6543 часто закрыт; session pooler :5432 с этой сети открыт. .env не трогаем. */
+function preferReachablePooler(env) {
+  const databaseUrl = env.DATABASE_URL?.trim() ?? "";
+  const directUrl = env.DIRECT_URL?.trim() ?? "";
+  if (/:6543\b/.test(databaseUrl) && /:5432\b/.test(directUrl)) {
+    env.DATABASE_URL = withSsl(directUrl);
+  } else if (databaseUrl) {
+    env.DATABASE_URL = withSsl(databaseUrl);
+  }
+  if (directUrl) env.DIRECT_URL = withSsl(directUrl);
+}
+
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(here, "..");
 const envFile = resolve(here, "../../../.env");
@@ -18,6 +35,22 @@ if (!existsSync(envFile)) {
 }
 
 process.loadEnvFile(envFile);
+
+function passwordLen(name) {
+  const value = (process.env[name] ?? "").trim();
+  const match = value.match(/^postgres(?:ql)?:\/\/([^@]*)@/i);
+  if (!match) return "n/a";
+  const userinfo = match[1] ?? "";
+  const colon = userinfo.indexOf(":");
+  const password = colon >= 0 ? userinfo.slice(colon + 1) : "";
+  const port = (value.match(/:(\d+)\//) || [])[1] || "?";
+  return `chars=${password.length} port=${port}`;
+}
+
+console.log(`file-on-disk DATABASE_URL ${passwordLen("DATABASE_URL")}`);
+console.log(`file-on-disk DIRECT_URL ${passwordLen("DIRECT_URL")}`);
+
+preferReachablePooler(process.env);
 
 const CHECKED_KEYS = [
   "DATABASE_URL",
@@ -90,5 +123,36 @@ if (command === "seed" || command === "status") {
   runNode(["--import", "tsx", file]);
 }
 
-console.error("Ожидалась команда: prisma | seed | status");
+if (command === "diag") {
+  const raw = process.env.DIRECT_URL?.trim() ?? "";
+  try {
+    const parsed = new URL(raw.replace(/^postgres(?:ql)?:/i, "http:"));
+    const user = decodeURIComponent(parsed.username);
+    let decodedPassLen = 0;
+    let decodeOk = false;
+    try {
+      decodedPassLen = decodeURIComponent(parsed.password).length;
+      decodeOk = true;
+    } catch {
+      decodeOk = false;
+    }
+    console.log(
+      [
+        `user=${user.startsWith("postgres.") ? "postgres.<ref>" : user}`,
+        `userDot=${user.includes(".")}`,
+        `passRawLen=${parsed.password.length}`,
+        `passDecodedLen=${decodedPassLen}`,
+        `decodeOk=${decodeOk}`,
+        `ssl=${parsed.searchParams.get("sslmode") || "none"}`,
+        `hostPort=${parsed.port}`,
+      ].join(" "),
+    );
+  } catch (error) {
+    console.error("diag-parse-failed", error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
+  runNode(["--import", "tsx", "diag.ts"]);
+}
+
+console.error("Ожидалась команда: prisma | seed | status | diag");
 process.exit(1);

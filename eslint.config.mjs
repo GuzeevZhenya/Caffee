@@ -26,7 +26,7 @@ export default tseslint.config(
   },
   // Node-код: API, бот, пакеты
   {
-    files: ["apps/api/**/*.ts", "apps/bot/**/*.ts", "packages/**/*.ts"],
+    files: ["apps/api/**/*.ts", "apps/bot/**/*.ts", "packages/**/*.ts", "api/**/*.ts"],
     languageOptions: { globals: globals.node },
   },
   // Отключает правила стиля, конфликтующие с Prettier (должен быть последним)

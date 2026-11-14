@@ -13,21 +13,43 @@ export interface LocalStaffAccount {
 
 export interface MenuOverride {
   name?: string;
+  description?: string;
   basePrice?: number;
   isAvailable?: boolean;
+  previewImageUrl?: string | null;
+}
+
+export interface LocalExtraMenuItem {
+  id: string;
+  categoryId: string;
+  slug: string;
+  name: string;
+  description: string;
+  basePrice: number;
+  isAvailable: boolean;
+  previewImageUrl: string | null;
 }
 
 export interface StoredOrder extends StaffOrder {
   updatedAt: string;
 }
 
+export interface LocalGuest {
+  telegramId: string;
+  firstName: string;
+  phone: string;
+  username?: string;
+}
+
 export interface LocalStoreData {
   version: 1;
   orders: StoredOrder[];
   menuOverrides: Record<string, MenuOverride>;
+  extraMenuItems: LocalExtraMenuItem[];
   shifts: StaffShift[];
   stock: StaffStockItem[];
   staff: LocalStaffAccount[];
+  guests: LocalGuest[];
 }
 
 const FILE = fileURLToPath(new URL("../../../../data/local-store.json", import.meta.url));
@@ -43,7 +65,11 @@ export function readLocalStore(): LocalStoreData {
   try {
     const parsed: unknown = JSON.parse(readFileSync(FILE, "utf8"));
     if (!isStore(parsed)) throw new Error("bad shape");
-    state = parsed;
+    state = {
+      ...parsed,
+      extraMenuItems: Array.isArray(parsed.extraMenuItems) ? parsed.extraMenuItems : [],
+      guests: Array.isArray(parsed.guests) ? parsed.guests : [],
+    };
   } catch (error) {
     const missing = error instanceof Error && "code" in error && error.code === "ENOENT";
     if (!missing) {
@@ -132,8 +158,21 @@ function seedStore(): LocalStoreData {
         summary: "Раф «Солёная карамель», Круассан с лососем",
         minutesAgo: 4,
       }),
+      order({
+        id: "demo-order-1045",
+        orderNumber: 1045,
+        type: "DINE_IN",
+        status: "COOKING_HOLD",
+        itemsTotal: 13.4,
+        finalTotal: 13.4,
+        isPaid: true,
+        guestName: "Гость Telegram",
+        summary: "Латте Классический",
+        minutesAgo: 8,
+      }),
     ],
     menuOverrides: {},
+    extraMenuItems: [],
     shifts: [],
     stock: [
       { id: "stock-croissant", name: "Миндальный круассан", quantity: 6, lowAt: 4 },
@@ -156,5 +195,6 @@ function seedStore(): LocalStoreData {
         firstName: "Бариста",
       },
     ],
+    guests: [],
   };
 }

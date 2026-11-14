@@ -1,10 +1,9 @@
 import type { StaffRole, StaffUser } from "@repo/shared";
-import { databaseConfigured } from "./database-configured";
 import { readLocalStore, updateLocalStore, type LocalStaffAccount } from "./local-store";
 
-/** Локальный JSON только пока нет настоящей строки Supabase. */
+/** Локальный JSON, если PostgreSQL недоступен. В production фолбэк выключен. */
 export function demoStaffAllowed(): boolean {
-  return process.env.NODE_ENV !== "production" && !databaseConfigured();
+  return process.env.NODE_ENV !== "production";
 }
 
 export function demoStaffByCredentials(email: string, password: string): StaffUser | null {

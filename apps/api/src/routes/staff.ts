@@ -3,6 +3,8 @@ import { resolveStaffUser } from "../lib/staff-auth";
 import {
   buildStaffNotifications,
   closeDemoShift,
+  createDemoMenu,
+  demoMenuCategories,
   demoMenuRows,
   demoOrders,
   demoShifts,
@@ -12,16 +14,20 @@ import {
   patchDemoOrder,
   patchDemoStock,
   revenueFromOrders,
+  slugFromName,
   todayKey,
 } from "../lib/staff-board";
+import { saveMenuPhoto } from "../lib/menu-photo";
 import { Prisma, prisma } from "@repo/database";
 import {
   createStaffEmployeeSchema,
+  createStaffMenuSchema,
   patchStaffMenuSchema,
   patchStaffOrderSchema,
   patchStaffStockSchema,
   staffShiftActionSchema,
   type StaffEmployee,
+  type StaffMenuResponse,
   type StaffMenuRow,
   type StaffOrder,
   type StaffRevenue,
@@ -89,23 +95,45 @@ async function loadOrders(): Promise<StaffOrder[]> {
   }
 }
 
-async function loadMenu(): Promise<StaffMenuRow[]> {
+function toStaffMenuRow(item: {
+  id: string;
+  name: string;
+  description: string;
+  categoryId: string;
+  category: { name: string };
+  basePrice: { toString(): string } | number;
+  isAvailable: boolean;
+  previewImageUrl: string | null;
+}): StaffMenuRow {
+  return {
+    id: item.id,
+    name: item.name,
+    categoryId: item.categoryId,
+    categoryName: item.category.name,
+    description: item.description,
+    basePrice: Number(item.basePrice),
+    isAvailable: item.isAvailable,
+    previewImageUrl: item.previewImageUrl,
+  };
+}
+
+async function loadMenu(): Promise<StaffMenuResponse> {
   try {
-    const rows = await prisma.menuItem.findMany({
-      include: { category: true },
-      orderBy: { name: "asc" },
-    });
-    return rows.map((item) => ({
-      id: item.id,
-      name: item.name,
-      categoryName: item.category.name,
-      basePrice: Number(item.basePrice),
-      isAvailable: item.isAvailable,
-    }));
+    const [rows, categories] = await Promise.all([
+      prisma.menuItem.findMany({
+        include: { category: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
+    ]);
+    return {
+      items: rows.map(toStaffMenuRow),
+      categories: categories.map((category) => ({ id: category.id, name: category.name })),
+    };
   } catch (error) {
     if (!demoStaffAllowed()) throw error;
     console.warn("[api/staff/menu] БД недоступна, отдаю демо-меню");
-    return demoMenuRows();
+    return { items: demoMenuRows(), categories: demoMenuCategories() };
   }
 }
 
@@ -159,9 +187,87 @@ export const staffRoutes = new Hono()
     const staff = await requireStaff(c, ["ADMIN"]);
     if (!isStaff(staff)) return staff;
     try {
-      return c.json({ items: await loadMenu() });
+      return c.json(await loadMenu());
     } catch {
       return c.json({ error: "staff_unavailable" }, 503);
+    }
+  })
+  .post("/menu", async (c) => {
+    const staff = await requireStaff(c, ["ADMIN"]);
+    if (!isStaff(staff)) return staff;
+    const parsed = createStaffMenuSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: "invalid_body" }, 400);
+    const input = parsed.data;
+    try {
+      const item = await prisma.menuItem.create({
+        data: {
+          categoryId: input.categoryId,
+          slug: slugFromName(input.name),
+          name: input.name,
+          description: input.description,
+          basePrice: input.basePrice,
+          isAvailable: input.isAvailable,
+          layers: {
+            create: {
+              meshName: "Layer_Base",
+              primitiveType: "CYLINDER",
+              layerOrder: 0,
+              title: "Основа",
+              isDefault: true,
+              isRemovable: false,
+            },
+          },
+        },
+        include: { category: true },
+      });
+      return c.json(toStaffMenuRow(item), 201);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        return c.json({ error: "unknown_category" }, 400);
+      }
+      if (!demoStaffAllowed()) return c.json({ error: "staff_unavailable" }, 503);
+      try {
+        const row = createDemoMenu(input);
+        console.warn("[api/staff/menu] БД недоступна, позиция сохранена в демо-сессии", error);
+        return c.json(row, 201);
+      } catch (demoError) {
+        if (demoError instanceof Error && demoError.message === "unknown_category") {
+          return c.json({ error: "unknown_category" }, 400);
+        }
+        throw demoError;
+      }
+    }
+  })
+  .post("/menu/:id/photo", async (c) => {
+    const staff = await requireStaff(c, ["ADMIN"]);
+    if (!isStaff(staff)) return staff;
+    const id = c.req.param("id");
+    const body = await c.req.parseBody();
+    const file = body.file;
+    if (!(file instanceof File)) return c.json({ error: "invalid_body" }, 400);
+    let previewImageUrl: string;
+    try {
+      previewImageUrl = await saveMenuPhoto(id, file);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      if (code === "too_large" || code === "unsupported_type") {
+        return c.json({ error: code }, 400);
+      }
+      throw error;
+    }
+    try {
+      const item = await prisma.menuItem.update({
+        where: { id },
+        data: { previewImageUrl },
+        include: { category: true },
+      });
+      return c.json(toStaffMenuRow(item));
+    } catch (error) {
+      if (!demoStaffAllowed()) return c.json({ error: "staff_unavailable" }, 503);
+      const row = patchDemoMenu(id, { previewImageUrl });
+      if (!row) return c.json({ error: "not_found" }, 404);
+      console.warn("[api/staff/menu] БД недоступна, фото сохранено в демо-сессии", error);
+      return c.json(row);
     }
   })
   .patch("/menu/:id", async (c) => {
@@ -176,14 +282,7 @@ export const staffRoutes = new Hono()
         data: parsed.data,
         include: { category: true },
       });
-      const row: StaffMenuRow = {
-        id: item.id,
-        name: item.name,
-        categoryName: item.category.name,
-        basePrice: Number(item.basePrice),
-        isAvailable: item.isAvailable,
-      };
-      return c.json(row);
+      return c.json(toStaffMenuRow(item));
     } catch (error) {
       if (!demoStaffAllowed()) return c.json({ error: "staff_unavailable" }, 503);
       const row = patchDemoMenu(id, parsed.data);

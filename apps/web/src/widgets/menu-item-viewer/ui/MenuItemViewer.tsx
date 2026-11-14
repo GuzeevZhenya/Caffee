@@ -33,16 +33,20 @@ export function MenuItemViewer({ item }: MenuItemViewerProps) {
   };
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(240px,340px)_minmax(0,1fr)] lg:gap-8">
-      <div className="relative aspect-square w-full max-w-[340px] overflow-hidden rounded-l border border-ink-500 bg-ink-700 lg:max-w-none">
-        <DrinkPhoto
-          item={item}
-          fit="cover"
-          className="absolute inset-0"
-          imgClassName="absolute inset-0 size-full object-cover"
-          activeLayerIds={configuration.activeLayerIds}
-        />
-      </div>
+    <div className="grid items-stretch gap-6 md:grid-cols-[minmax(240px,0.92fr)_minmax(0,1.08fr)] md:gap-8 lg:gap-10">
+      <figure className="menu-item-photo-frame m-0 w-full">
+        <div className="menu-item-photo-frame__mat">
+          <div className="menu-item-photo-frame__inner">
+            <DrinkPhoto
+              item={item}
+              fit="cover"
+              className="absolute inset-0"
+              imgClassName="absolute inset-0 size-full object-cover"
+              activeLayerIds={configuration.activeLayerIds}
+            />
+          </div>
+        </div>
+      </figure>
 
       <aside className="grid min-w-0 content-start gap-5">
         <div>

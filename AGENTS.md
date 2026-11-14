@@ -1,6 +1,6 @@
 # AGENTS.md — Tactile Craft Coffee & Bakery
 
-> Контекст для агентов и разработчиков. Читать перед правками. Карта файлов — `STRUCTURE.md`. Открытые задачи — `.docs/backlog/README.md`.
+> Контекст для агентов и разработчиков. Читать перед правками. Карта файлов — `STRUCTURE.md`. Очередь спринтов — `.docs/sprints/README.md`. Открытые задачи — `.docs/backlog/README.md`.
 
 ## Критические правила
 
@@ -18,7 +18,7 @@
 
 1. **Меню по слоям** — фото блюда, состав (название, граммы, КБЖУ), кастомизация с пересчётом цены и калорий. 3D/R3F снят в фазе 3.5. Типы слоя в `packages/shared/src/types/three-menu.types.ts` остаются контрактом данных, не сценой.
 2. **Карта зала** — 2D SVG (`widgets/hall-map`). Холд: Redis `lock:table:{tableId}:{slotStartIso}`, TTL 10 минут, затем `Booking(HELD)` и `bookingId`. Realtime — Supabase, канал `cafe-tables`.
-3. **Telegram-бот** — фаза 5, сейчас smoke-скелет grammY: доставка по полигону и триггер «Готовить сейчас» за 15 минут до брони.
+3. **Telegram-бот** — grammY + Mini App `/tma`. Меню в чате и в приложении; телефон на оформлении; `/zone`, `/status`, триггер за 15 минут. Бриф: `.docs/sprints/09-telegram-bot.md`.
 
 ## Монорепозиторий
 
@@ -27,7 +27,7 @@ Turborepo + pnpm. Пакеты `shared` и `database` отдаются исхо�
 ```text
 apps/web    Vite 6 + React 19 + react-router 7 + Tailwind 4 + RTK, FSD, порт 5173
 apps/api    Hono 4, порт 4000, basePath /api — единственный доступ к Prisma и Redis
-apps/bot    grammY, до фазы 5
+apps/bot    grammY, Mini App `/tma`
 packages/   shared, database, typescript-config (base / react / node)
 ```
 
@@ -37,7 +37,7 @@ Vite проксирует `/api` → `http://localhost:4000`.
 
 - `app/` — вход, роутер, store, стили.
 - `pages/` — home, menu, menu-item, booking, checkout, tma, staff.
-- `widgets/` — app-header, app-footer, hero-showcase, menu-item-viewer, hall-map.
+- `widgets/` — app-header, app-footer, hero-showcase, menu-item-viewer, hall-map, tma-shell.
 - `features/` — cart, book-table, menu-customizer, coffee-builder, staff-auth.
 - `entities/` — menu-item, table, order.
 - `shared/` — api, lib, ui. Папки `config` нет.
@@ -55,15 +55,18 @@ Vite проксирует `/api` → `http://localhost:4000`.
 | `GET /tables?date&slot`     | `FREE` / `HELD` / `BOOKED` и Redis-локи                  |
 | `POST /tables/hold`         | лок на 10 минут, `Booking(HELD)`, `bookingId`, broadcast |
 | `DELETE /tables/hold`       | снять свой холд                                          |
-| `POST /orders`              | заказ, цена считается на сервере                         |
+| `POST /orders`              | заказ; доставка — адрес + зона, от 30 BYN                |
 | `GET /orders?id=`           | статус заказа                                            |
 | `PATCH /orders/:id/trigger` | «Готовить сейчас»                                        |
+| `POST /bot/profile`         | Telegram → гость                                         |
+| `GET /bot/due-reminders`    | поллер напоминаний                                       |
+| `POST /bot/reminders/ack`   | подтвердить напоминание                                  |
 | `POST /auth/login`          | email и пароль персонала → JWT                           |
 | `GET /auth/me`              | текущий сотрудник по Bearer                              |
 
 Гость: заголовок `x-guest-id` (`apps/web/src/shared/lib/guest-id.ts`), пользователь в БД — `guest@tactile.local`. Секреты — корневой `.env` (шаблон `.env.example`): его читают API, Vite и `pnpm db:push`. Без `DATABASE_URL` меню и столы читаются из моков, а заказы, правки меню, смены, склад и сотрудники пишутся в `data/local-store.json` (файл в `.gitignore`). Если строка Supabase задана, эти фолбэки выключены: источник — Prisma, сбой базы — `503`.
 
-Персонал: JWT на 7 дней, ключ `tactile.staff.token` в `localStorage`. `RequireStaff` закрывает `/staff/*`, кроме `/staff/login`. Вкладки: заказы и статусы, меню (цена и наличие), смены, выручка, уведомления, сотрудники, склад. Учётки сида — `.docs/memory-sprint-admin-shell.md`. Без базы те же учётки лежат в `data/local-store.json`.
+Персонал: JWT на 7 дней, ключ `tactile.staff.token` в `localStorage`. `RequireStaff` закрывает `/staff/*`, кроме `/staff/login`. Вкладки: заказы и статусы, меню (цена и наличие), смены, выручка, уведомления, сотрудники, склад. Учётки сида — `.docs/sprints/05-staff-shell.md`. Без базы те же учётки лежат в `data/local-store.json`.
 
 | Метод и путь                                    | Назначение                            |
 | ----------------------------------------------- | ------------------------------------- |
@@ -98,15 +101,15 @@ Vite проксирует `/api` → `http://localhost:4000`.
 | `pnpm ci:check`                                          | lint + typecheck + build                                    |
 | `pnpm db:generate` / `db:push` / `db:seed` / `db:status` | Prisma Client / схема в Supabase / сид / проверка счётчиков |
 
-Скиллы агента: `.cursor/skills/` — `/формат`, `/заключение`. Чек-лист ревью — `REVIEW.md`.
+Скиллы агента: `.cursor/skills/` — `/формат`, `/закрыть-спринт` (пишет `.docs/sprints/NN-*.md`). Чек-лист ревью — `REVIEW.md`. Перед «дальше» читай `.docs/sprints/README.md`, не имя спринта.
 
 ## Roadmap
 
 - [x] Фазы 1–3.5 — монорепо, Vite и FSD, страница блюда, тёмная тема, Coffee Builder. R3F снят.
-- [x] Фаза 4 — 2D-карта зала, `Booking(HELD)`, `DINE_IN`, единые Supabase env. Бриф: `.docs/memory-sprint-phase-4.md`.
+- [x] Фаза 4 — 2D-карта зала, `Booking(HELD)`, `DINE_IN`, единые Supabase env. Бриф: `.docs/sprints/04-hall.md`.
 - [x] Админка, срез 1 — вход персонала и вкладки-заглушки. Спека: `docs/superpowers/specs/2026-11-11-staff-auth-shell-design.md`.
 - [x] Админка, срез 2 — заказы, меню, смены, склад, выручка, уведомления, сотрудники.
-- [ ] Фаза 5 — Telegram-бот: имя и телефон, доставка (бесплатно от 30), триггер бариста, трекинг статуса.
+- [x] Фаза 5, тонкий путь — бот, Mini App, Vercel web. Бриф: `.docs/sprints/09-telegram-bot.md`.
 
 Открытые правки интерфейса (hero, надпись «деморежим», форма брони) — `.docs/backlog/README.md`.
 
@@ -116,7 +119,7 @@ Vite проксирует `/api` → `http://localhost:4000`.
 
 ## Исправить
 
-0. Каждый этап ниже сперва показываешь что сделал и после одобрения следующий, пока я не проверю дальше стоп.
+0. Каждый этап ниже сперва показываешь что сделал и после одобрения следующий, пока я не проверю дальше стоп. Это пункты одного спринта, не новые номера. Закрытие — `/закрыть-спринт`.
 1. ![alt text](image-1.png) - Главная страница. картинку во всю высоту
 2. ![alt text](image-2.png) - Главная страница, сделать фоновой картинкой. не растягивать
 3. ![alt text](image-3.png) - menu/item -вернуть вариант как был
@@ -125,4 +128,5 @@ Vite проксирует `/api` → `http://localhost:4000`.
 6. ![alt text](image-5.png) - Футер -сделать страницу о кофейне, накидай что нибудь туда. Убери состав по слоям и добавь пункты для обработки перс данных
    отдельная страница с заканами РБ, а так же выводом что обрабатываются персональные и локал сторедж, плюс поищи еще какие есть требования при оформлении
    сайта для экслоотации.
-7. Подключение к supabase.
+7. Подключение к supabase. — спринт **08**, закрыт.
+8. Telegram-бот и Mini App. — спринт **09**, закрыт.

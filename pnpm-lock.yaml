@@ -96,9 +96,6 @@ importers:
       '@grammyjs/menu':
         specifier: ^1.2.1
         version: 1.5.0(grammy@1.46.0)
-      '@repo/database':
-        specifier: workspace:*
-        version: link:../../packages/database
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared

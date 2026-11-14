@@ -1,5 +1,6 @@
 import { MOCK_CATEGORIES, MOCK_MENU_ITEMS, type MenuItem3DConfig } from "@repo/shared";
 import type {
+  StaffMenuCategory,
   StaffMenuRow,
   StaffNotification,
   StaffOrder,
@@ -7,7 +8,13 @@ import type {
   StaffStockItem,
   StaffUser,
 } from "@repo/shared";
-import { readLocalStore, updateLocalStore, type StoredOrder } from "./local-store";
+import {
+  readLocalStore,
+  updateLocalStore,
+  type LocalExtraMenuItem,
+  type LocalGuest,
+  type StoredOrder,
+} from "./local-store";
 
 export function todayKey(date = new Date()): string {
   const year = date.getFullYear();
@@ -22,6 +29,27 @@ export function demoOrders(): StaffOrder[] {
 
 export function findLocalOrder(id: string): StoredOrder | null {
   return readLocalStore().orders.find((order) => order.id === id) ?? null;
+}
+
+export function findLocalOrderByNumber(orderNumber: number): StoredOrder | null {
+  return readLocalStore().orders.find((order) => order.orderNumber === orderNumber) ?? null;
+}
+
+export function upsertLocalGuest(input: LocalGuest): LocalGuest {
+  let saved: LocalGuest = input;
+  updateLocalStore((data) => {
+    const existing = data.guests.find((guest) => guest.telegramId === input.telegramId);
+    if (existing) {
+      existing.firstName = input.firstName;
+      existing.phone = input.phone;
+      existing.username = input.username;
+      saved = { ...existing };
+      return;
+    }
+    data.guests.push(input);
+    saved = input;
+  });
+  return saved;
 }
 
 export function patchDemoOrder(id: string, status: StaffOrder["status"]): StaffOrder | null {
@@ -75,21 +103,77 @@ export function patchLocalOrderTrigger(id: string, startNow: boolean): StoredOrd
   return result;
 }
 
+export function demoMenuCategories(): StaffMenuCategory[] {
+  return MOCK_CATEGORIES.map((category) => ({ id: category.id, name: category.name }));
+}
+
+export function extraMenuConfigs(): MenuItem3DConfig[] {
+  return readLocalStore().extraMenuItems.map(extraToConfig);
+}
+
+export function allDemoMenuItems(): MenuItem3DConfig[] {
+  return [...MOCK_MENU_ITEMS, ...extraMenuConfigs()].map(applyDemoMenu);
+}
+
 export function demoMenuRows(): StaffMenuRow[] {
-  return MOCK_MENU_ITEMS.map(toMenuRow);
+  return allDemoMenuItems().map(toMenuRow);
 }
 
 export function patchDemoMenu(
   id: string,
-  patch: { name?: string; basePrice?: number; isAvailable?: boolean },
+  patch: {
+    name?: string;
+    description?: string;
+    basePrice?: number;
+    isAvailable?: boolean;
+    previewImageUrl?: string | null;
+  },
 ): StaffMenuRow | null {
-  const item = MOCK_MENU_ITEMS.find((row) => row.id === id);
-  if (!item) return null;
+  let found = false;
   updateLocalStore((data) => {
+    const extra = data.extraMenuItems.find((item) => item.id === id);
+    if (extra) {
+      if (patch.name !== undefined) extra.name = patch.name;
+      if (patch.description !== undefined) extra.description = patch.description;
+      if (patch.basePrice !== undefined) extra.basePrice = patch.basePrice;
+      if (patch.isAvailable !== undefined) extra.isAvailable = patch.isAvailable;
+      if (patch.previewImageUrl !== undefined) extra.previewImageUrl = patch.previewImageUrl;
+      found = true;
+      return;
+    }
+    if (!MOCK_MENU_ITEMS.some((item) => item.id === id)) return;
     const prev = data.menuOverrides[id] ?? {};
     data.menuOverrides[id] = { ...prev, ...patch };
+    found = true;
   });
-  return toMenuRow(item);
+  if (!found) return null;
+  const item = allDemoMenuItems().find((row) => row.id === id);
+  return item ? toMenuRow(item) : null;
+}
+
+export function createDemoMenu(input: {
+  name: string;
+  description: string;
+  categoryId: string;
+  basePrice: number;
+  isAvailable: boolean;
+}): StaffMenuRow {
+  const category = MOCK_CATEGORIES.find((row) => row.id === input.categoryId);
+  if (!category) throw new Error("unknown_category");
+  const extra: LocalExtraMenuItem = {
+    id: `local-item-${crypto.randomUUID()}`,
+    categoryId: input.categoryId,
+    slug: slugFromName(input.name),
+    name: input.name,
+    description: input.description,
+    basePrice: input.basePrice,
+    isAvailable: input.isAvailable,
+    previewImageUrl: null,
+  };
+  updateLocalStore((data) => {
+    data.extraMenuItems.push(extra);
+  });
+  return toMenuRow(extraToConfig(extra));
 }
 
 /** Гостевое меню видит правки админки, пока нет PostgreSQL. */
@@ -99,8 +183,65 @@ export function applyDemoMenu(item: MenuItem3DConfig): MenuItem3DConfig {
   return {
     ...item,
     name: patch.name ?? item.name,
+    description: patch.description ?? item.description,
     basePrice: patch.basePrice ?? item.basePrice,
     isAvailable: patch.isAvailable ?? item.isAvailable,
+    previewImageUrl: patch.previewImageUrl === undefined ? item.previewImageUrl : patch.previewImageUrl,
+  };
+}
+
+export function slugFromName(name: string): string {
+  const base = name
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/[^a-z0-9а-я-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return `${base || "item"}-${Date.now().toString(36)}`;
+}
+
+function extraToConfig(item: LocalExtraMenuItem): MenuItem3DConfig {
+  return {
+    id: item.id,
+    categoryId: item.categoryId,
+    slug: item.slug,
+    name: item.name,
+    description: item.description,
+    basePrice: item.basePrice,
+    baseCalories: 0,
+    baseWeightGrams: 0,
+    prepTimeMinutes: 5,
+    isAvailable: item.isAvailable,
+    isFeatured: false,
+    modelUrl: null,
+    previewImageUrl: item.previewImageUrl,
+    cameraPreset: { position: [0, 1.8, 4.5], target: [0, 0.5, 0], fov: 42 },
+    scale3D: 1,
+    ambientColorHex: "#ffffff",
+    layers: [
+      {
+        id: `${item.id}-base`,
+        menuItemId: item.id,
+        meshName: "Layer_Base",
+        primitiveType: "CYLINDER",
+        layerOrder: 0,
+        basePositionY: 0,
+        explodeOffsetY: 0.5,
+        heightScale: 0.2,
+        radiusScale: 1,
+        labelPosition: [1.2, 0, 0],
+        title: "Основа",
+        description: null,
+        isDefault: true,
+        isRemovable: false,
+        isOptionalAdd: false,
+        priceModifier: 0,
+        material: { colorHex: "#6F4E37", opacity: 1, roughness: 0.4 },
+        nutrition: { calories: 0, proteins: 0, fats: 0, carbs: 0, weightGrams: 0 },
+      },
+    ],
   };
 }
 
@@ -243,9 +384,13 @@ function toMenuRow(item: MenuItem3DConfig): StaffMenuRow {
   return {
     id: item.id,
     name: patch?.name ?? item.name,
+    categoryId: item.categoryId,
     categoryName: category?.name ?? "Меню",
+    description: patch?.description ?? item.description,
     basePrice: patch?.basePrice ?? item.basePrice,
     isAvailable: patch?.isAvailable ?? item.isAvailable,
+    previewImageUrl:
+      patch?.previewImageUrl === undefined ? item.previewImageUrl : patch.previewImageUrl,
   };
 }
 

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/sprint-folders.js",
+        "timeout": 20
+      }
+    ]
+  }
+}

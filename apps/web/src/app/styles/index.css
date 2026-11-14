@@ -105,12 +105,71 @@
     border-radius: 4px;
   }
 
+  /* Outline на SVG-фигурах даёт светлый прямоугольник в другом месте плана. */
+  svg:focus,
+  svg:focus-visible,
+  svg *:focus,
+  svg *:focus-visible {
+    outline: none;
+  }
+
   ::selection {
     background: oklch(0.72 0.1 62 / 0.35);
   }
 }
 
 @layer components {
+  .tma-shell {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+    background: var(--color-ink-900);
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  .tma-nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--color-ink-500);
+    background: color-mix(in oklab, var(--color-ink-900) 92%, transparent);
+    backdrop-filter: blur(14px);
+  }
+  .tma-nav-item {
+    position: relative;
+    display: grid;
+    min-height: 44px;
+    place-items: center;
+    border-radius: 999px;
+    color: var(--color-cream-dim);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .tma-nav-item[aria-current="page"] {
+    background: var(--color-gold);
+    color: var(--color-ink-900);
+  }
+  .tma-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 18%;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--color-gold-deep);
+    color: var(--color-cream);
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+  }
+
   /* Центровщик: на desktop шире, на mobile плотнее к краям */
   .wrap {
     width: min(1280px, calc(100% - 24px));
@@ -236,6 +295,87 @@
     background: transparent;
   }
 
+  /*
+   * Страница блюда: увеличенное фото в латунной рамке-паспарту.
+   * Внешний кант — градиент золота, внутри тёмный мат и уголки.
+   */
+  .menu-item-photo-frame {
+    position: relative;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    padding: 10px;
+    border-radius: var(--radius-l);
+    background:
+      linear-gradient(var(--color-ink-700), var(--color-ink-800)) padding-box,
+      linear-gradient(
+        145deg,
+        oklch(0.88 0.07 82),
+        var(--color-gold) 24%,
+        var(--color-gold-deep) 50%,
+        oklch(0.86 0.05 82) 74%,
+        var(--color-gold)
+      )
+      border-box;
+    border: 2px solid transparent;
+    box-shadow:
+      0 22px 48px -18px oklch(0.1 0.02 55 / 0.92),
+      0 0 0 1px oklch(0.72 0.1 62 / 0.2),
+      inset 0 1px 0 oklch(0.93 0.028 82 / 0.16);
+  }
+  .menu-item-photo-frame::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: calc(var(--radius-l) - 6px);
+    background:
+      linear-gradient(var(--color-gold), var(--color-gold)) 0 0 / 22px 1.5px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 0 0 / 1.5px 22px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 100% 0 / 22px 1.5px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 100% 0 / 1.5px 22px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 0 100% / 22px 1.5px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 0 100% / 1.5px 22px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 100% 100% / 22px 1.5px no-repeat,
+      linear-gradient(var(--color-gold), var(--color-gold)) 100% 100% / 1.5px 22px no-repeat;
+    opacity: 0.88;
+  }
+  .menu-item-photo-frame__mat {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 6px;
+    border-radius: calc(var(--radius-l) - 8px);
+    background: var(--color-ink-900);
+    box-shadow: inset 0 0 0 1px oklch(0.72 0.1 62 / 0.45);
+  }
+  .menu-item-photo-frame__inner {
+    position: relative;
+    overflow: hidden;
+    flex: 1 1 auto;
+    aspect-ratio: 1;
+    min-height: 240px;
+    border-radius: calc(var(--radius-m) - 2px);
+    background: var(--color-ink-700);
+  }
+  @media (min-width: 768px) {
+    .menu-item-photo-frame__inner {
+      aspect-ratio: auto;
+      min-height: 100%;
+      height: 100%;
+    }
+  }
+  .menu-item-photo-frame__inner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    box-shadow: inset 0 0 28px oklch(0.1 0.02 55 / 0.28);
+  }
+
   /* ---------- Кнопки ---------- */
   .btn {
     display: inline-flex;
@@ -339,6 +479,29 @@
   .nav-pill:has([data-active="true"]) {
     background: var(--color-gold);
     color: var(--color-ink-900);
+  }
+
+  .header-icon-btn {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 999px;
+    color: var(--color-cream);
+  }
+  .header-icon-btn:hover {
+    background: var(--color-ink-600);
+    color: var(--color-gold);
+  }
+  .header-drawer .nav-pill {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-radius: var(--radius-m);
+    font-size: 16px;
   }
 
   /* ---------- Типографика секций ---------- */

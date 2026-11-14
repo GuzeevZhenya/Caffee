@@ -8,6 +8,8 @@ interface MenuItemCardProps {
   item: MenuItem3DConfig;
   /** Название категории для тега над визуалом */
   categoryName?: string;
+  /** Ссылка на карточку блюда */
+  to?: string;
   /** Слот под действия (кнопки фич: «В корзину», «Состав») */
   action?: ReactNode;
 }
@@ -15,13 +17,13 @@ interface MenuItemCardProps {
 /**
  * Карточка меню: фото edge-to-edge без серой вложенной рамки и без внутренних скруглений.
  */
-export function MenuItemCard({ item, categoryName, action }: MenuItemCardProps) {
+export function MenuItemCard({ item, categoryName, to, action }: MenuItemCardProps) {
   const totals = calculateItemTotals(item, getDefaultActiveLayerIds(item));
 
   return (
     <article className="card grid !transform-none gap-0 overflow-hidden !rounded-l !p-0">
       <Link
-        to={`/menu/${item.id}`}
+        to={to ?? `/menu/${item.id}`}
         className="group relative block aspect-[4/3] w-full overflow-hidden bg-ink-900"
         aria-label={`Открыть ${item.name}`}
       >

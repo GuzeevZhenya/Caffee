@@ -9,6 +9,7 @@ import {
   type TableSlotStatus,
 } from "@repo/shared";
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 
 function todayIso(): string {
   const now = new Date();
@@ -127,6 +128,14 @@ export function BookingPage() {
           </select>
         </label>
       </form>
+
+      <p className="text-sm text-cream-dim">
+        Оставляя имя и телефон, вы соглашаетесь с{" "}
+        <Link to="/privacy" className="hover:text-cream">
+          политикой обработки персональных данных
+        </Link>
+        .
+      </p>
 
       {(guestName.length > 0 || guestPhone.length > 0) && !guestCheck.success ? (
         <p className="text-sm text-cream-dim">

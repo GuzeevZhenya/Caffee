@@ -1,4 +1,9 @@
-import { MOCK_CATEGORIES, MOCK_MENU_ITEMS } from "@repo/shared";
+import {
+  MOCK_CATEGORIES,
+  MOCK_MENU_ITEMS,
+  calculateItemTotals,
+  getDefaultActiveLayerIds,
+} from "@repo/shared";
 import type { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "./src/client";
@@ -254,6 +259,56 @@ async function main(): Promise<void> {
     });
   }
   console.log(`  ✔ Персонал: ${staffAccounts.length} (admin@ / barista@)`);
+
+  const guest = await prisma.user.upsert({
+    where: { email: "guest@tactile.local" },
+    update: { firstName: "Гость" },
+    create: {
+      email: "guest@tactile.local",
+      firstName: "Гость",
+    },
+  });
+
+  const latte = await prisma.menuItem.findUnique({ where: { slug: "latte-classic" } });
+  const latteMock = MOCK_MENU_ITEMS.find((item) => item.slug === "latte-classic");
+  if (latte && latteMock) {
+    const activeLayerIds = getDefaultActiveLayerIds(latteMock);
+    const totals = calculateItemTotals(latteMock, activeLayerIds);
+    const existingDemo = await prisma.order.findFirst({ where: { orderNumber: 1045 } });
+    if (existingDemo) {
+      await prisma.order.update({
+        where: { id: existingDemo.id },
+        data: { status: "COOKING_HOLD", isTriggeredByGuest: false, isPaid: true },
+      });
+    } else {
+      await prisma.order.create({
+        data: {
+          id: "demo-order-1045",
+          orderNumber: 1045,
+          userId: guest.id,
+          type: "DINE_IN",
+          status: "COOKING_HOLD",
+          itemsTotal: totals.unitPrice,
+          finalTotal: totals.unitPrice,
+          isPaid: true,
+          items: {
+            create: {
+              menuItemId: latte.id,
+              quantity: 1,
+              unitPrice: totals.unitPrice,
+              totalPrice: totals.unitPrice,
+              customConfiguration: {
+                activeLayerIds,
+                removedTitles: [],
+                addedTitles: [],
+              },
+            },
+          },
+        },
+      });
+    }
+    console.log("  ✔ Демо-заказ #1045 (COOKING_HOLD) для бота");
+  }
 
   console.log("✅ Сидирование завершено");
 }

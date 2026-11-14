@@ -1,10 +1,12 @@
 export {
   useCreateStaffEmployeeMutation,
+  useCreateStaffMenuMutation,
   usePatchStaffMenuMutation,
   usePatchStaffOrderMutation,
   usePatchStaffStockMutation,
   useStaffEmployeesQuery,
   useStaffMenuQuery,
+  useUploadStaffMenuPhotoMutation,
   useStaffNotificationsQuery,
   useStaffOrdersQuery,
   useStaffRevenueQuery,

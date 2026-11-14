@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-/** Футер в духе premium coffee landing: колонки + контакты */
+/** Футер: как у крупных .by-магазинов — документы гостю, без внутренней кухни. */
 export function AppFooter() {
   return (
     <footer className="mt-20 border-t border-ink-500 bg-ink-800/40 pt-12 pb-8 text-sm text-cream-dim sm:mt-28">
@@ -43,18 +43,23 @@ export function AppFooter() {
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-gold">Гостю</p>
           <ul className="grid gap-2">
             <li>
-              <a href="#about" className="hover:text-cream">
+              <Link to="/about" className="hover:text-cream">
                 О кофейне
-              </a>
-            </li>
-            <li>
-              <Link to="/menu" className="hover:text-cream">
-                Состав по слоям
               </Link>
             </li>
             <li>
-              <Link to="/booking" className="hover:text-cream">
-                Бронь на 10 минут
+              <Link to="/privacy" className="hover:text-cream">
+                Персональные данные
+              </Link>
+            </li>
+            <li>
+              <Link to="/cookies" className="hover:text-cream">
+                Cookie
+              </Link>
+            </li>
+            <li>
+              <Link to="/legal" className="hover:text-cream">
+                Юридическая информация
               </Link>
             </li>
           </ul>
@@ -72,9 +77,17 @@ export function AppFooter() {
           </ul>
         </div>
       </div>
-      <div className="wrap mt-10 flex flex-wrap justify-between gap-3 border-t border-ink-500 pt-6 text-xs">
+      <div className="wrap mt-10 flex flex-col gap-3 border-t border-ink-500 pt-6 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <span>© 2026 Tactile Craft Coffee &amp; Bakery</span>
-        <span>Сделано с вниманием к слоям</span>
+        <p>
+          <Link to="/privacy" className="hover:text-cream">
+            Политика персональных данных
+          </Link>
+          {" · "}
+          <Link to="/cookies" className="hover:text-cream">
+            Cookie
+          </Link>
+        </p>
       </div>
     </footer>
   );

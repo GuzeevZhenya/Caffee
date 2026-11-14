@@ -31,3 +31,5 @@ apps/web/public/drinks/_orig/
 # Локальная база, когда нет DATABASE_URL
 data/local-store.json
 data/local-store.json.tmp
+data/uploads/
+.vercel

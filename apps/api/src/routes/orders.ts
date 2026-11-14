@@ -1,9 +1,17 @@
 import { demoStaffAllowed } from "../lib/demo-staff";
-import { appendLocalOrder, applyDemoMenu, findLocalOrder, patchLocalOrderTrigger } from "../lib/staff-board";
+import {
+  appendLocalOrder,
+  applyDemoMenu,
+  findLocalOrder,
+  findLocalOrderByNumber,
+  patchLocalOrderTrigger,
+} from "../lib/staff-board";
 import { prisma, toMenuItem3DConfig } from "@repo/database";
 import {
   calculateItemTotals,
+  checkDeliveryPoint,
   createOrderSchema,
+  FREE_DELIVERY_FROM,
   MOCK_MENU_ITEMS,
   roundMoney,
   triggerCookingSchema,
@@ -68,10 +76,24 @@ function toStatusResponse(order: {
   };
 }
 
+function assertDelivery(input: CreateOrderInput, itemsTotal: number): void {
+  if (input.type !== "DELIVERY") return;
+  if (itemsTotal < FREE_DELIVERY_FROM) {
+    throw new OrderValidationError(`Доставка от ${FREE_DELIVERY_FROM} BYN`);
+  }
+  const point = input.deliveryAddress
+    ? { lat: input.deliveryAddress.latitude, lng: input.deliveryAddress.longitude }
+    : null;
+  if (point && !checkDeliveryPoint(point).inZone) {
+    throw new OrderValidationError("Адрес вне зоны доставки");
+  }
+}
+
 function saveLocalOrder(input: CreateOrderInput): CreateOrderResponse {
   const configs = new Map(MOCK_MENU_ITEMS.map((item) => [item.id, applyDemoMenu(item)]));
   const lines = buildOrderLines(input, configs);
   const itemsTotal = roundMoney(lines.reduce((sum, line) => sum + line.totalPrice, 0));
+  assertDelivery(input, itemsTotal);
   const bonusDiscount = roundMoney(
     Math.min(input.bonusSpent * BONUS_POINT_VALUE, itemsTotal * BONUS_MAX_REDEEM_PERCENT),
   );
@@ -121,37 +143,58 @@ export const ordersRoutes = new Hono()
 
       const lines = buildOrderLines(input, configs);
       const itemsTotal = roundMoney(lines.reduce((sum, line) => sum + line.totalPrice, 0));
+      assertDelivery(input, itemsTotal);
       const bonusDiscount = roundMoney(
         Math.min(input.bonusSpent * BONUS_POINT_VALUE, itemsTotal * BONUS_MAX_REDEEM_PERCENT),
       );
       const finalTotal = roundMoney(itemsTotal - bonusDiscount);
 
-      // Проверки связанных сущностей
       if (input.bookingId) {
         const booking = await prisma.booking.findUnique({ where: { id: input.bookingId } });
         if (!booking) throw new OrderValidationError("Бронь не найдена");
       }
-      if (input.addressId) {
-        const address = await prisma.address.findUnique({ where: { id: input.addressId } });
-        if (!address) throw new OrderValidationError("Адрес не найден");
-      }
 
-      // TODO(Фаза 5): реальный пользователь из Telegram initData / сессии сайта.
-      // Пока все заказы вешаются на гостевую учётку.
       const guest = await prisma.user.upsert({
         where: { email: "guest@tactile.local" },
         update: {},
         create: { email: "guest@tactile.local", firstName: "Гость" },
       });
 
+      let addressId = input.addressId ?? null;
+      if (input.deliveryAddress) {
+        const createdAddress = await prisma.address.create({
+          data: {
+            userId: guest.id,
+            title: input.deliveryAddress.title,
+            street: input.deliveryAddress.street,
+            building: input.deliveryAddress.building,
+            apartment: input.deliveryAddress.apartment,
+            entrance: input.deliveryAddress.entrance,
+            floor: input.deliveryAddress.floor,
+            intercom: input.deliveryAddress.intercom,
+            comment: input.deliveryAddress.comment,
+            latitude: input.deliveryAddress.latitude,
+            longitude: input.deliveryAddress.longitude,
+            isDefault: input.deliveryAddress.isDefault,
+          },
+        });
+        addressId = createdAddress.id;
+      } else if (addressId) {
+        const address = await prisma.address.findUnique({ where: { id: addressId } });
+        if (!address) throw new OrderValidationError("Адрес не найден");
+        if (!checkDeliveryPoint({ lat: address.latitude, lng: address.longitude }).inZone) {
+          throw new OrderValidationError("Адрес вне зоны доставки");
+        }
+      }
+
       const order = await prisma.order.create({
         data: {
           userId: guest.id,
           type: input.type,
-          // Предзаказ к столу ждёт триггера гостя из бота, остальные — оплаты
           status: input.bookingId ? "COOKING_HOLD" : "PENDING",
           bookingId: input.bookingId ?? null,
-          addressId: input.addressId ?? null,
+          addressId,
+          deliveryFee: 0,
           itemsTotal,
           bonusSpent: input.bonusSpent,
           finalTotal,
@@ -184,25 +227,33 @@ export const ordersRoutes = new Hono()
       return c.json({ error: "database_unavailable" }, 503);
     }
   })
-  /** GET /api/orders?id=... — статус заказа для live-плашки (поллинг до realtime в Фазе 5) */
+  /** GET /api/orders?id=... или ?number=1042 — статус для сайта и бота */
   .get("/", async (c) => {
-    const orderId = c.req.query("id");
-    if (!orderId) {
+    const orderId = c.req.query("id")?.trim();
+    const numberRaw = c.req.query("number")?.trim();
+    const orderNumber = numberRaw ? Number(numberRaw) : Number.NaN;
+    const byNumber = Number.isInteger(orderNumber) && orderNumber > 0;
+    if (!orderId && !byNumber) {
       return c.json({ error: "missing_id" }, 400);
     }
 
     try {
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        select: { id: true, orderNumber: true, status: true, isPaid: true, updatedAt: true },
-      });
+      const order = orderId
+        ? await prisma.order.findUnique({
+            where: { id: orderId },
+            select: { id: true, orderNumber: true, status: true, isPaid: true, updatedAt: true },
+          })
+        : await prisma.order.findFirst({
+            where: { orderNumber },
+            select: { id: true, orderNumber: true, status: true, isPaid: true, updatedAt: true },
+          });
       if (!order) {
         return c.json({ error: "order_not_found" }, 404);
       }
       return c.json(toStatusResponse(order));
     } catch (error) {
       if (demoStaffAllowed()) {
-        const order = findLocalOrder(orderId);
+        const order = orderId ? findLocalOrder(orderId) : findLocalOrderByNumber(orderNumber);
         if (!order) return c.json({ error: "order_not_found" }, 404);
         return c.json(
           toStatusResponse({

@@ -7,6 +7,9 @@ export function staffBoardError(error: unknown): string {
     if (code === "shift_not_open") return "Сначала откройте смену.";
     if (code === "unauthorized") return "Сессия истекла. Войдите снова.";
     if (code === "invalid_body") return "Проверьте поля формы.";
+    if (code === "unknown_category") return "Выберите категорию из списка.";
+    if (code === "too_large") return "Фото должно быть меньше 2 МБ.";
+    if (code === "unsupported_type") return "Нужен JPEG, PNG или WebP.";
   }
   return "Не удалось выполнить действие. Проверьте, что API запущен.";
 }

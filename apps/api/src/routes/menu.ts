@@ -1,7 +1,7 @@
 import { databaseConfigured, databaseErrorText } from "../lib/database-configured";
-import { applyDemoMenu } from "../lib/staff-board";
+import { allDemoMenuItems } from "../lib/staff-board";
 import { prisma, toMenuItem3DConfig } from "@repo/database";
-import { MOCK_CATEGORIES, MOCK_MENU_ITEMS, type MenuResponse } from "@repo/shared";
+import { MOCK_CATEGORIES, type MenuResponse } from "@repo/shared";
 import { Hono } from "hono";
 
 /**
@@ -35,7 +35,7 @@ export const menuRoutes = new Hono().get("/", async (c) => {
     );
     const response: MenuResponse = {
       categories: MOCK_CATEGORIES,
-      items: MOCK_MENU_ITEMS.map(applyDemoMenu).filter((item) => item.isAvailable),
+      items: allDemoMenuItems().filter((item) => item.isAvailable),
       source: "mock",
     };
     return c.json(response);

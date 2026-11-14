@@ -1,6 +1,7 @@
 import { baseApi } from "@/shared/api/baseApi";
 import type {
   CreateStaffEmployeeInput,
+  CreateStaffMenuInput,
   PatchStaffMenuInput,
   PatchStaffOrderInput,
   PatchStaffStockInput,
@@ -35,6 +36,18 @@ export const staffBoardApi = baseApi.injectEndpoints({
     }),
     patchStaffMenu: build.mutation<StaffMenuRow, { id: string } & PatchStaffMenuInput>({
       query: ({ id, ...body }) => ({ url: `staff/menu/${id}`, method: "PATCH", body }),
+      invalidatesTags: ["Staff", "Menu"],
+    }),
+    createStaffMenu: build.mutation<StaffMenuRow, CreateStaffMenuInput>({
+      query: (body) => ({ url: "staff/menu", method: "POST", body }),
+      invalidatesTags: ["Staff", "Menu"],
+    }),
+    uploadStaffMenuPhoto: build.mutation<StaffMenuRow, { id: string; file: File }>({
+      query: ({ id, file }) => {
+        const body = new FormData();
+        body.append("file", file);
+        return { url: `staff/menu/${id}/photo`, method: "POST", body };
+      },
       invalidatesTags: ["Staff", "Menu"],
     }),
     staffRevenue: build.query<StaffRevenue, string>({
@@ -78,6 +91,8 @@ export const {
   usePatchStaffOrderMutation,
   useStaffMenuQuery,
   usePatchStaffMenuMutation,
+  useCreateStaffMenuMutation,
+  useUploadStaffMenuPhotoMutation,
   useStaffRevenueQuery,
   useStaffEmployeesQuery,
   useCreateStaffEmployeeMutation,

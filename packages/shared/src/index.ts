@@ -10,13 +10,16 @@ export * from "./schemas/order.schema";
 export * from "./schemas/address.schema";
 export * from "./schemas/auth.schema";
 export * from "./schemas/staff.schema";
+export * from "./schemas/bot.schema";
 
 // Утилиты
 export * from "./utils/price-calculator";
 export * from "./utils/booking-slots";
+export * from "./utils/order-ref";
 
 // Моковые данные меню и зала
 export * from "./mocks/menu.mock";
+export * from "./mocks/drink-photos";
 export * from "./mocks/tables.mock";
 export * from "./mocks/hall-layout.mock";
 export * from "./mocks/table-occupancy.mock";

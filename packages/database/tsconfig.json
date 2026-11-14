@@ -5,5 +5,5 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["src", "seed.ts", "status.ts"]
+  "include": ["src", "seed.ts", "status.ts", "diag.ts"]
 }

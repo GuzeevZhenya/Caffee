@@ -25,10 +25,19 @@ export interface GeoPoint {
   lng: number;
 }
 
+/** Доставка бесплатна, если сумма позиций не ниже этого порога (BYN). */
+export const FREE_DELIVERY_FROM = 30;
+
+export const deliveryCheckSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
+export type DeliveryCheckInput = z.infer<typeof deliveryCheckSchema>;
+
 /**
- * Полигон зоны доставки (центр города, условный).
- * TODO(Фаза 5): заменить на реальный полигон кофейни и/или несколько зон
- * с разной стоимостью доставки.
+ * Полигон зоны доставки (центр Минска, условный).
+ * Несколько тарифов и точный контур — когда появится боевой адрес.
  */
 export const DELIVERY_ZONE_POLYGON: readonly GeoPoint[] = [
   { lat: 53.921, lng: 27.532 },
@@ -59,4 +68,28 @@ export function isPointInDeliveryZone(
     if (intersects) inside = !inside;
   }
   return inside;
+}
+
+export interface DeliveryCheckResult {
+  inZone: boolean;
+  freeFrom: number;
+}
+
+export function checkDeliveryPoint(point: GeoPoint): DeliveryCheckResult {
+  return {
+    inZone: isPointInDeliveryZone(point),
+    freeFrom: FREE_DELIVERY_FROM,
+  };
+}
+
+/** Центр полигона — точка «в зоне», если геолокация недоступна (тест / уточнение курьером). */
+export function deliveryZoneCentroid(
+  polygon: readonly GeoPoint[] = DELIVERY_ZONE_POLYGON,
+): GeoPoint {
+  const sum = polygon.reduce(
+    (acc, point) => ({ lat: acc.lat + point.lat, lng: acc.lng + point.lng }),
+    { lat: 0, lng: 0 },
+  );
+  const count = polygon.length || 1;
+  return { lat: sum.lat / count, lng: sum.lng / count };
 }

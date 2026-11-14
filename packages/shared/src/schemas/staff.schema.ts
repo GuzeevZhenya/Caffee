@@ -32,26 +32,49 @@ export type PatchStaffOrderInput = z.infer<typeof patchStaffOrderSchema>;
 export const staffMenuRowSchema = z.object({
   id: z.string(),
   name: z.string(),
+  categoryId: z.string(),
   categoryName: z.string(),
+  description: z.string(),
   basePrice: z.number(),
   isAvailable: z.boolean(),
+  previewImageUrl: z.string().nullable(),
 });
 
 export type StaffMenuRow = z.infer<typeof staffMenuRowSchema>;
 
+export const staffMenuCategorySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export type StaffMenuCategory = z.infer<typeof staffMenuCategorySchema>;
+
 export const staffMenuResponseSchema = z.object({
   items: z.array(staffMenuRowSchema),
+  categories: z.array(staffMenuCategorySchema),
 });
 
 export type StaffMenuResponse = z.infer<typeof staffMenuResponseSchema>;
 
 export const patchStaffMenuSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().trim().max(400).optional(),
   basePrice: z.number().positive().max(500).optional(),
   isAvailable: z.boolean().optional(),
+  previewImageUrl: z.string().trim().min(1).max(500).nullable().optional(),
 });
 
 export type PatchStaffMenuInput = z.infer<typeof patchStaffMenuSchema>;
+
+export const createStaffMenuSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(400).default(""),
+  categoryId: z.string().min(1),
+  basePrice: z.number().positive().max(500),
+  isAvailable: z.boolean().default(true),
+});
+
+export type CreateStaffMenuInput = z.infer<typeof createStaffMenuSchema>;
 
 export const staffRevenueSchema = z.object({
   date: z.string(),

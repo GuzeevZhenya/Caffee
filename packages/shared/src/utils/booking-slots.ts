@@ -1,6 +1,9 @@
 /** Длина брони по умолчанию: выбор на 16:00 занимает стол до 18:00. */
 export const BOOKING_SLOT_MINUTES = 120;
 
+/** За сколько минут до слота бот спрашивает «Готовить сейчас». */
+export const BOOKING_REMINDER_MINUTES = 15;
+
 /** Зал принимает гостей с 10:00, последний слот заканчивается в 23:00. */
 export const CAFE_OPEN_MINUTES = 10 * 60;
 export const CAFE_CLOSE_MINUTES = 23 * 60;

@@ -1,9 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @repo/web build",
+  "buildCommand": "pnpm db:generate && pnpm --filter @repo/web build",
   "outputDirectory": "apps/web/dist",
   "framework": null,
+  "functions": {
+    "api/[[...route]].ts": {
+      "maxDuration": 30,
+      "includeFiles": "packages/database/prisma/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/((?!assets/|drinks/|api/).*)",

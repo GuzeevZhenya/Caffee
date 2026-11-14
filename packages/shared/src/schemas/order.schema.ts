@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { addressSchema } from "./address.schema";
 import { ORDER_TYPES } from "../types/realtime.types";
 
 /**
@@ -30,18 +31,20 @@ export const createOrderSchema = z
     type: orderTypeSchema,
     /** Обязателен для предзаказа к столику (DINE_IN с бронью) */
     bookingId: z.string().optional(),
-    /** Обязателен для доставки */
+    /** Уже сохранённый адрес (редко; Mini App шлёт deliveryAddress) */
     addressId: z.string().optional(),
+    /** Новый адрес вместе с заказом */
+    deliveryAddress: addressSchema.optional(),
     /** Сколько бонусных баллов списать */
     bonusSpent: z.number().int().min(0).default(0),
     items: z.array(orderItemSchema).min(1, "Корзина пуста"),
   })
   .superRefine((data, ctx) => {
-    if (data.type === "DELIVERY" && !data.addressId) {
+    if (data.type === "DELIVERY" && !data.addressId && !data.deliveryAddress) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Для доставки нужно выбрать адрес",
-        path: ["addressId"],
+        message: "Для доставки нужно указать адрес",
+        path: ["deliveryAddress"],
       });
     }
     if (data.type === "DINE_IN" && !data.bookingId) {

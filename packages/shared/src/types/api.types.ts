@@ -12,6 +12,20 @@ export interface CreateOrderResponse {
   finalTotal: number;
 }
 
+export interface BotProfileResponse {
+  telegramId: string;
+  firstName: string;
+  phone: string;
+}
+
+export interface DueBookingReminder {
+  bookingId: string;
+  telegramId: string;
+  firstName: string | null;
+  startTime: string;
+  orders: Array<{ orderId: string; orderNumber: number }>;
+}
+
 /** Статус заказа для live-плашки (поллинг до realtime в Фазе 5) */
 export interface OrderStatusResponse extends OrderStatusRealtimePayload {
   isPaid: boolean;

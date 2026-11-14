@@ -54,7 +54,7 @@ function validateTimeSlot(data: { startTime: Date; endTime: Date }, ctx: z.Refin
   }
 }
 
-const guestPhoneSchema = z
+export const guestPhoneSchema = z
   .string()
   .trim()
   .regex(/^\+?\d[\d\s()-]{6,18}$/, "Укажите телефон");

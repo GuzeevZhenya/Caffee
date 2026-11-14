@@ -27,22 +27,23 @@ function toSvgY(z: number): number {
   return z - bounds.minZ + PAD;
 }
 
-function fixtureClass(kind: HallFixture["kind"]): string {
+/** Непрозрачные fill: в SVG альфа композитится в светлый квадрат. */
+function fixturePaint(kind: HallFixture["kind"]): { fill: string; stroke: string } {
   switch (kind) {
     case "wall":
-      return "fill-ink-600 stroke-ink-500";
+      return { fill: "#3a322c", stroke: "#4a4038" };
     case "window":
-      return "fill-mint/25 stroke-mint/60";
+      return { fill: "#2a3a32", stroke: "#5a8a72" };
     case "door":
-      return "fill-gold/35 stroke-gold";
+      return { fill: "#5c4a32", stroke: "#c4a574" };
     case "toilet":
-      return "fill-ink-700 stroke-ink-500";
+      return { fill: "#2a2420", stroke: "#4a4038" };
     case "bar":
-      return "fill-gold-deep/40 stroke-gold/50";
+      return { fill: "#4a3828", stroke: "#8a6a48" };
     case "label":
-      return "fill-transparent stroke-none";
+      return { fill: "none", stroke: "none" };
     default:
-      return "fill-ink-700";
+      return { fill: "#2a2420", stroke: "#4a4038" };
   }
 }
 
@@ -77,22 +78,16 @@ export function HallMap({
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.75fr)] lg:items-start">
-      <div className="overflow-hidden rounded-l border border-ink-500/80 bg-ink-800/50 p-3 sm:p-4">
+      <div className="overflow-hidden rounded-l border border-ink-500/80 bg-ink-800 p-3 sm:p-4">
         <svg
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-          className="h-auto w-full"
+          className="h-auto w-full outline-none"
+          overflow="hidden"
+          tabIndex={-1}
           role="img"
           aria-label="План зала кофейни"
         >
-          <rect
-            x={0}
-            y={0}
-            width={VIEW_W}
-            height={VIEW_H}
-            fill="#1c1612"
-            className="fill-ink-900/80"
-            rx={0.15}
-          />
+          <rect x={0} y={0} width={VIEW_W} height={VIEW_H} fill="#1c1612" rx={0.15} />
 
           {HALL_LAYOUT.fixtures.map((fixture) => {
             const x = toSvgX(fixture.x);
@@ -112,6 +107,7 @@ export function HallMap({
                 </text>
               );
             }
+            const paint = fixturePaint(fixture.kind);
             return (
               <g key={fixture.id}>
                 <rect
@@ -119,7 +115,8 @@ export function HallMap({
                   y={y}
                   width={fixture.width}
                   height={fixture.depth}
-                  className={fixtureClass(fixture.kind)}
+                  fill={paint.fill}
+                  stroke={paint.stroke}
                   strokeWidth={0.04}
                   rx={0.08}
                 />
@@ -155,7 +152,8 @@ export function HallMap({
                   fill={statusFill(table.status, table.heldByMe)}
                   stroke={isSelected ? "var(--color-cream)" : "oklch(0.25 0.02 55)"}
                   strokeWidth={isSelected ? 0.08 : 0.04}
-                  className="cursor-pointer transition-opacity hover:opacity-90"
+                  className="cursor-pointer outline-none transition-opacity hover:opacity-90"
+                  tabIndex={-1}
                   onClick={() => setSelectedId(table.id)}
                 />
                 <text

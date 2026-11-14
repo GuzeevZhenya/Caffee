@@ -68,9 +68,12 @@ export function AboutSection() {
               </div>
             ))}
           </div>
-          <div>
-            <Link to="/menu" className="btn btn-primary mt-2">
+          <div className="mt-2 flex flex-wrap gap-3">
+            <Link to="/menu" className="btn btn-primary">
               Узнать меню
+            </Link>
+            <Link to="/about" className="btn btn-ghost">
+              О кофейне
             </Link>
           </div>
         </div>

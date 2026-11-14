@@ -12,7 +12,6 @@
   "dependencies": {
     "@grammyjs/conversations": "^1.2.0",
     "@grammyjs/menu": "^1.2.1",
-    "@repo/database": "workspace:*",
     "@repo/shared": "workspace:*",
     "grammy": "^1.36.3"
   },

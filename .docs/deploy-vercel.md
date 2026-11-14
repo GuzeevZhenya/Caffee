@@ -1,30 +1,35 @@
-# Деплой на Vercel (web) + БД
+# Деплой на Vercel (web + API) + БД
 
-Дата: 2026-11-10
+Дата: 2026-11-14
 
 ## Что деплоится на Vercel
 
-Только **apps/web** (Vite SPA). Конфиг: корневой `vercel.json`.
+**apps/web** (Vite SPA) и **apps/api** как Node Function `api/[[...route]].ts`. Конфиг: корневой `vercel.json`.
 
-- Сборка: `pnpm --filter @repo/web build` → `apps/web/dist`
-- SPA-rewrites для react-router; путь `/api/*` не перехватывается (ждёт внешний API)
+- Сборка: `pnpm db:generate && pnpm --filter @repo/web build` → `apps/web/dist`
+- SPA-rewrites для react-router; `/api/*` идёт в Hono (тот же код, что `localhost:4000`)
 
-Без живого API фронт работает на **клиентских моках** (п.6 бэклога): меню/столы читаются, заказы/холды — с безопасными сообщениями об ошибке.
+Без `DATABASE_URL` на Vercel меню с функции может отдать моки, запись заказов в production не идёт в local-store.
 
 ## Env на Vercel (Project → Settings → Environment Variables)
 
 | Переменная | Нужна для |
 | ---------- | --------- |
-| `VITE_SUPABASE_URL` | Realtime-подписка на столы (опционально) |
+| `DATABASE_URL`, `DIRECT_URL` | Prisma / Supabase session pooler `:5432` |
+| `JWT_SECRET` | вход персонала |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Realtime с API |
+| `VITE_SUPABASE_URL` | Realtime-подписка на столы (вшивается на build) |
 | `VITE_SUPABASE_ANON_KEY` | то же |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | локи столов |
+| `BOT_TOKEN` / `BOT_API_SECRET` | если бот бьёт в этот же `/api` |
 
-`VITE_*` вшиваются на **build** — после смены ключей нужен redeploy.
+`VITE_*` вшиваются на **build** — после смены ключей нужен redeploy. Секреты в репозиторий не класть.
 
-## API (не на Vercel в этой итерации)
+## API
 
-`apps/api` — долгоживущий Node (`@hono/node-server` + Prisma + Redis). Для полного продакшена поднимите на Railway / Fly / Render и проксируйте `/api` на этот хост (или задайте `baseUrl` в `baseApi`).
+Тот же Hono, что в `apps/api`. Локально по-прежнему `pnpm dev` → `:4000`. На Vercel — функция с `maxDuration` 30 с.
 
-Нужные секреты API (см. `.env.example`):
+Нужные секреты (см. `.env.example`):
 
 - `DATABASE_URL`, `DIRECT_URL` — Supabase Postgres
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
@@ -45,5 +50,5 @@
 
 1. Подключить репозиторий к Vercel, Root Directory = `.` (корень монорепо).
 2. Framework Preset: Other; команды возьмутся из `vercel.json`.
-3. Добавить `VITE_SUPABASE_*` при необходимости.
-4. Deploy → открыть URL, проверить `/`, `/menu`, `/menu/:id`, `/booking`, `/checkout`, `/staff/login`.
+3. Добавить `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, при необходимости `VITE_SUPABASE_*` и Redis.
+4. Deploy → проверить `/api/health`, `/`, `/menu`, `/tma`, `/checkout`, `/staff/login`.

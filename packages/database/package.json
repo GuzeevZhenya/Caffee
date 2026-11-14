@@ -15,6 +15,7 @@
     "db:push": "node scripts/run-with-root-env.mjs prisma db push",
     "db:seed": "node scripts/run-with-root-env.mjs seed",
     "db:status": "node scripts/run-with-root-env.mjs status",
+    "db:diag": "node scripts/run-with-root-env.mjs diag",
     "db:studio": "node scripts/run-with-root-env.mjs prisma studio",
     "typecheck": "tsc --noEmit"
   },
